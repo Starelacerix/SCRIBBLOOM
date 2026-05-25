@@ -463,20 +463,21 @@
                 <div class="btn-row" style="justify-content: space-between; align-items: end;">
                   <div>
                     <h3 style="margin-bottom: 4px;">Free image generator</h3>
-                    <p class="tiny" style="margin:0">Choose Pollinations or Puter here. OpenRouter is still for text lessons unless you intentionally choose a paid image model.</p>
+                    <p class="tiny" style="margin:0">Choose Hugging Face Qwen for the best blueprint quality if you have a token, or use Pollinations / Puter as lighter fallbacks. OpenRouter stays text-only here.</p>
                   </div>
                   <div style="min-width: min(360px, 100%);">
                     <label for="quickImageProvider">Image provider</label>
                     <select id="quickImageProvider">
+                      <option value="huggingface">Hugging Face Qwen — best quality</option>
                       <option value="pollinations">Pollinations — free / no key</option>
                       <option value="puter">Puter.js — free / no key</option>
                       <option value="local">Local SVG blueprint — always free</option>
-                      <option value="openrouter">OpenRouter image — optional / usually paid</option>
                     </select>
                   </div>
                 </div>
                 <div class="btn-row">
-                  <button class="btn primary" id="generatePollinations">Generate with Pollinations</button>
+                  <button class="btn primary" id="generateHuggingFace">Generate with Hugging Face</button>
+                  <button class="btn" id="generatePollinations">Generate with Pollinations</button>
                   <button class="btn purple" id="generatePuter">Generate with Puter</button>
                   <button class="btn" id="generateSelectedProvider">Generate with selected provider</button>
                 </div>
@@ -618,19 +619,27 @@
               <div>
                 <label for="imageProvider">Blueprint image provider</label>
                 <select id="imageProvider">
+                  <option value="huggingface">Hugging Face Qwen — recommended</option>
                   <option value="pollinations">Pollinations — free / no key</option>
                   <option value="puter">Puter.js — free / no key</option>
-                  <option value="openrouter">OpenRouter image model — optional / usually paid</option>
                   <option value="local">Local SVG blueprint only</option>
                 </select>
               </div>
-              <div>
+              <div id="hfTokenWrap">
+                <label for="hfToken">Hugging Face token</label>
+                <input id="hfToken" type="password" placeholder="hf_..." autocomplete="off" />
+              </div>
+              <div id="hfProviderWrap">
+                <label for="hfProvider">Hugging Face provider</label>
+                <input id="hfProvider" value="fal-ai" placeholder="fal-ai" />
+              </div>
+              <div id="hfModelWrap">
+                <label for="hfModel">Hugging Face image model</label>
+                <input id="hfModel" value="Qwen/Qwen-Image" placeholder="Qwen/Qwen-Image" />
+              </div>
+              <div id="puterModelWrap">
                 <label for="puterModel">Puter image model</label>
                 <input id="puterModel" value="flux-schnell" placeholder="Example: flux-schnell" />
-              </div>
-              <div>
-                <label for="imageModel">OpenRouter image model (optional)</label>
-                <input id="imageModel" placeholder="Only needed if provider is OpenRouter" />
               </div>
               <div class="btn-row">
                 <button class="btn primary" id="saveSettings">Save settings</button>
@@ -642,8 +651,8 @@
               <h3>App notes</h3>
               <ul class="list">
                 <li><strong>Static build.</strong><small>Everything is client-side. No backend, routing, build tools, or paid hosting required.</small></li>
-                <li><strong>Free image route.</strong><small>SCRIBBLOOM now uses Pollinations or Puter for blueprint image generation, with local SVG fallback if a provider fails.</small></li>
-                <li><strong>OpenRouter role.</strong><small>Best used for text planning, prompt building, lessons, and critique. OpenRouter image models are optional and often paid.</small></li>
+                <li><strong>Image route.</strong><small>SCRIBBLOOM now uses Hugging Face Qwen/Qwen-Image as the main high-quality blueprint generator, with Pollinations and Puter as fallbacks, plus local SVG as a guaranteed backup.</small></li>
+                <li><strong>OpenRouter role.</strong><small>OpenRouter is now text-only here: planning, prompt building, lessons, and critique. Blueprint images come from Hugging Face, Pollinations, Puter, or the local SVG tool.</small></li>
                 <li><strong>Best workflow.</strong><small>Generate blueprint → save image → import to Procreate → lower opacity → trace on a new layer → customize.</small></li>
                 <li><strong>Privacy.</strong><small>Your saved relics and optional API key are stored only in this browser through localStorage.</small></li>
               </ul>
@@ -659,9 +668,9 @@
     const $$ = selector => [...document.querySelectorAll(selector)];
 
     const STORAGE = {
-      settings: 'scribbloom.settings.v1',
-      stash: 'scribbloom.stash.v1',
-      current: 'scribbloom.current.v1'
+      settings: 'scribbloom.settings.v3',
+      stash: 'scribbloom.stash.v3',
+      current: 'scribbloom.current.v3'
     };
 
     const defaultKit = {
@@ -693,10 +702,29 @@
       mission: 'Draw the same idea three times: simple, expressive, and polished. Keep the silhouette identical so you can see how details change the mood.',
       fixTips: []
     };
+    function normalizeSettings(raw = {}) {
+      return {
+        apiKey: raw.apiKey || '',
+        textModel: raw.textModel || 'google/gemma-4-31b-it:free',
+        imageProvider: raw.imageProvider || 'huggingface',
+        hfToken: raw.hfToken || '',
+        hfProvider: raw.hfProvider || 'fal-ai',
+        hfModel: raw.hfModel || 'Qwen/Qwen-Image',
+        puterModel: raw.puterModel || 'flux-schnell'
+      };
+    }
 
     let state = {
       kit: load(STORAGE.current, defaultKit),
-      settings: load(STORAGE.settings, { apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell', imageModel: '' }),
+      settings: normalizeSettings(load(STORAGE.settings, {
+        apiKey: '',
+        textModel: 'google/gemma-4-31b-it:free',
+        imageProvider: 'huggingface',
+        hfToken: '',
+        hfProvider: 'fal-ai',
+        hfModel: 'Qwen/Qwen-Image',
+        puterModel: 'flux-schnell'
+      })),
       stash: load(STORAGE.stash, [])
     };
 
@@ -708,7 +736,7 @@
       variations: ['Variations', 'Push the same idea into different moods without losing readability.'],
       fixer: ['Fixer', 'Diagnose messy, uneven, flat, or unreadable drawings with simple corrections.'],
       stash: ['Stash', 'Save projects locally as reusable drawing relics.'],
-      settings: ['Settings', 'Choose your AI teacher plus free blueprint image providers and local storage.']
+      settings: ['Settings', 'Set your OpenRouter text model, your Hugging Face image token, and your fallback blueprint providers.']
     };
 
     function load(key, fallback) {
@@ -738,20 +766,35 @@
     });
 
     function providerLabel(provider) {
-      return ({ pollinations: 'Pollinations', puter: 'Puter', openrouter: 'OpenRouter image', local: 'Local SVG' })[provider] || 'Pollinations';
+      return ({ huggingface: 'Hugging Face Qwen', pollinations: 'Pollinations', puter: 'Puter', local: 'Local SVG' })[provider] || 'Hugging Face Qwen';
+    }
+
+    function syncImageSettingsUI() {
+      const provider = state.settings.imageProvider || 'huggingface';
+      const hfIds = ['#hfTokenWrap', '#hfProviderWrap', '#hfModelWrap'];
+      hfIds.forEach(id => { const el = $(id); if (el) el.style.display = provider === 'huggingface' ? 'block' : 'none'; });
+      const puterWrap = $('#puterModelWrap');
+      if (puterWrap) puterWrap.style.display = provider === 'puter' ? 'block' : 'none';
     }
 
     function updateStatus() {
+      state.settings = normalizeSettings(state.settings);
       const connected = Boolean(state.settings.apiKey);
-      const provider = providerLabel(state.settings.imageProvider || 'pollinations');
+      const provider = providerLabel(state.settings.imageProvider || 'huggingface');
       $('#apiStatus').textContent = `${connected ? 'OpenRouter text: key saved locally' : 'OpenRouter text: not connected'} · Image: ${provider}`;
       $('#apiKey').value = state.settings.apiKey || '';
       $('#textModel').value = state.settings.textModel || 'google/gemma-4-31b-it:free';
-      $('#imageProvider').value = state.settings.imageProvider || 'pollinations';
+      $('#imageProvider').value = state.settings.imageProvider || 'huggingface';
       const quickProvider = $('#quickImageProvider');
-      if (quickProvider) quickProvider.value = state.settings.imageProvider || 'pollinations';
+      if (quickProvider) quickProvider.value = state.settings.imageProvider || 'huggingface';
+      const hfToken = $('#hfToken');
+      const hfProvider = $('#hfProvider');
+      const hfModel = $('#hfModel');
+      if (hfToken) hfToken.value = state.settings.hfToken || '';
+      if (hfProvider) hfProvider.value = state.settings.hfProvider || 'fal-ai';
+      if (hfModel) hfModel.value = state.settings.hfModel || 'Qwen/Qwen-Image';
       $('#puterModel').value = state.settings.puterModel || 'flux-schnell';
-      $('#imageModel').value = state.settings.imageModel || '';
+      syncImageSettingsUI();
     }
 
     function currentInputs() {
@@ -943,6 +986,27 @@ Important image instructions:
       return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
     }
 
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function setBlueprintImage(url, label) {
+      state.kit.imageUrl = url;
+      save(STORAGE.current, state.kit);
+      renderBlueprint();
+      $('#blueprintLabel').textContent = label;
+    }
+
+    async function loadHuggingFaceClient() {
+      const mod = await import('https://esm.sh/@huggingface/inference');
+      return mod.InferenceClient;
+    }
+
     let puterScriptPromise;
     function loadPuterScript() {
       if (window.puter) return Promise.resolve(window.puter);
@@ -958,12 +1022,37 @@ Important image instructions:
       return puterScriptPromise;
     }
 
+    async function generateWithHuggingFace(prompt) {
+      if (!state.settings.hfToken) throw new Error('Add your Hugging Face token in Settings first.');
+      const InferenceClient = await loadHuggingFaceClient();
+      const client = new InferenceClient(state.settings.hfToken);
+      const result = await client.textToImage({
+        provider: state.settings.hfProvider || 'fal-ai',
+        model: state.settings.hfModel || 'Qwen/Qwen-Image',
+        inputs: prompt,
+        parameters: {
+          width: 1024,
+          height: 1024,
+          num_inference_steps: 28,
+          guidance_scale: 4
+        }
+      });
+      let dataUrl = '';
+      if (result instanceof Blob) {
+        dataUrl = await blobToDataUrl(result);
+      } else if (result?.blob instanceof Blob) {
+        dataUrl = await blobToDataUrl(result.blob);
+      } else if (typeof result === 'string') {
+        dataUrl = result;
+      } else {
+        throw new Error('Hugging Face did not return an image blob.');
+      }
+      setBlueprintImage(dataUrl, 'Blueprint ready via Hugging Face');
+    }
+
     async function generateWithPollinations(prompt) {
       const url = buildPollinationsUrl(prompt);
-      state.kit.imageUrl = url;
-      save(STORAGE.current, state.kit);
-      renderBlueprint();
-      $('#blueprintLabel').textContent = 'Blueprint ready via Pollinations';
+      setBlueprintImage(url, 'Blueprint ready via Pollinations');
     }
 
     async function generateWithPuter(prompt) {
@@ -973,35 +1062,18 @@ Important image instructions:
       const first = Array.isArray(result) ? result[0] : result;
       const url = first?.src || first?.url || first?.image?.src || first?.image_url || first;
       if (!url || typeof url !== 'string') throw new Error('Puter did not return an image URL.');
-      state.kit.imageUrl = url;
-      save(STORAGE.current, state.kit);
-      renderBlueprint();
-      $('#blueprintLabel').textContent = 'Blueprint ready via Puter';
-    }
-
-    async function generateWithOpenRouterImage(prompt) {
-      if (!state.settings.imageModel) throw new Error('Add an OpenRouter image model in Settings first.');
-      const data = await callOpenRouter([
-        { role: 'user', content: prompt }
-      ], { model: state.settings.imageModel, modalities: ['image', 'text'], temperature: 0.85 });
-      const message = data.choices?.[0]?.message || {};
-      let url = message.images?.[0]?.image_url?.url;
-      if (!url && Array.isArray(message.content)) {
-        const imagePart = message.content.find(part => part.type === 'image_url' || part.image_url);
-        url = imagePart?.image_url?.url || imagePart?.url;
-      }
-      if (!url) throw new Error('The model responded, but no image URL was found.');
-      state.kit.imageUrl = url;
-      save(STORAGE.current, state.kit);
-      renderBlueprint();
-      $('#blueprintLabel').textContent = 'Blueprint ready via OpenRouter';
+      setBlueprintImage(url, 'Blueprint ready via Puter');
     }
 
     async function generateAIImage() {
       const prompt = buildImagePrompt();
-      const provider = state.settings.imageProvider || 'pollinations';
+      const provider = state.settings.imageProvider || 'huggingface';
       $('#blueprintLabel').textContent = `Generating AI image with ${providerLabel(provider)}...`;
       try {
+        if (provider === 'huggingface') {
+          await generateWithHuggingFace(prompt);
+          return;
+        }
         if (provider === 'pollinations') {
           await generateWithPollinations(prompt);
           return;
@@ -1010,13 +1082,26 @@ Important image instructions:
           await generateWithPuter(prompt);
           return;
         }
-        if (provider === 'openrouter') {
-          await generateWithOpenRouterImage(prompt);
-          return;
-        }
         createLocalBlueprint();
         $('#blueprintLabel').textContent = 'Local SVG blueprint ready';
       } catch (error) {
+        if (provider === 'huggingface') {
+          try {
+            await generateWithPollinations(prompt);
+            $('#blueprintLabel').textContent = 'Hugging Face failed; Pollinations fallback ready';
+            return;
+          } catch (fallbackError) {
+            try {
+              await generateWithPuter(prompt);
+              $('#blueprintLabel').textContent = 'HF + Pollinations failed; Puter fallback ready';
+              return;
+            } catch (fallbackError2) {
+              $('#blueprintLabel').textContent = 'Image providers failed; local SVG created';
+              createLocalBlueprint(`${error.message} | ${fallbackError.message} | ${fallbackError2.message}`);
+              return;
+            }
+          }
+        }
         if (provider === 'puter') {
           try {
             await generateWithPollinations(prompt);
@@ -1028,10 +1113,10 @@ Important image instructions:
             return;
           }
         }
-        if (provider === 'openrouter') {
+        if (provider === 'pollinations') {
           try {
-            await generateWithPollinations(prompt);
-            $('#blueprintLabel').textContent = 'OpenRouter image failed; Pollinations fallback ready';
+            await generateWithPuter(prompt);
+            $('#blueprintLabel').textContent = 'Pollinations failed; Puter fallback ready';
             return;
           } catch (fallbackError) {
             $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
@@ -1045,12 +1130,7 @@ Important image instructions:
     }
 
     function setImageProvider(provider) {
-      state.settings = {
-        ...state.settings,
-        imageProvider: provider || 'pollinations',
-        textModel: state.settings.textModel || 'google/gemma-4-31b-it:free',
-        puterModel: state.settings.puterModel || 'flux-schnell'
-      };
+      state.settings = normalizeSettings({ ...state.settings, imageProvider: provider || 'huggingface' });
       save(STORAGE.settings, state.settings);
       updateStatus();
     }
@@ -1234,6 +1314,8 @@ Important image instructions:
     $('#sendToBlueprint').addEventListener('click', () => setTab('blueprint'));
     $('#generateImage').addEventListener('click', generateAIImage);
     $('#quickImageProvider').addEventListener('change', event => setImageProvider(event.target.value));
+    $('#imageProvider').addEventListener('change', event => setImageProvider(event.target.value));
+    $('#generateHuggingFace').addEventListener('click', () => { setImageProvider('huggingface'); generateAIImage(); });
     $('#generatePollinations').addEventListener('click', () => { setImageProvider('pollinations'); generateAIImage(); });
     $('#generatePuter').addEventListener('click', () => { setImageProvider('puter'); generateAIImage(); });
     $('#generateSelectedProvider').addEventListener('click', () => { setImageProvider($('#quickImageProvider').value); generateAIImage(); });
@@ -1259,14 +1341,14 @@ Important image instructions:
       if (deleteIndex !== undefined) { state.stash.splice(Number(deleteIndex), 1); save(STORAGE.stash, state.stash); renderStash(); }
     });
     $('#saveSettings').addEventListener('click', () => {
-      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell', imageModel: $('#imageModel').value.trim() };
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, hfToken: $('#hfToken').value.trim(), hfProvider: $('#hfProvider').value.trim() || 'fal-ai', hfModel: $('#hfModel').value.trim() || 'Qwen/Qwen-Image', puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       updateStatus();
     });
-    $('#clearSettings').addEventListener('click', () => { state.settings = { apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell', imageModel: '' }; save(STORAGE.settings, state.settings); updateStatus(); });
+    $('#clearSettings').addEventListener('click', () => { state.settings = normalizeSettings({ apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'huggingface', hfToken: '', hfProvider: 'fal-ai', hfModel: 'Qwen/Qwen-Image', puterModel: 'flux-schnell' }); save(STORAGE.settings, state.settings); updateStatus(); });
     $('#testKey').addEventListener('click', async () => {
       $('#apiStatus').textContent = 'Testing OpenRouter...';
-      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell', imageModel: $('#imageModel').value.trim() };
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, hfToken: $('#hfToken').value.trim(), hfProvider: $('#hfProvider').value.trim() || 'fal-ai', hfModel: $('#hfModel').value.trim() || 'Qwen/Qwen-Image', puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       try {
         const data = await callOpenRouter([{ role: 'user', content: 'Reply with exactly: SCRIBBLOOM connected' }], { temperature: 0 });
