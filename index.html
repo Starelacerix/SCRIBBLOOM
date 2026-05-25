@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#8d6cff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SCRIBBLOOM" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="ICON-192x192.png" />
+  <title>SCRIBBLOOM — AI Blueprint Drawing Studio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0a18;
+      --bg2: #151126;
+      --panel: rgba(255,255,255,.075);
+      --panel2: rgba(255,255,255,.115);
+      --line: rgba(255,255,255,.15);
+      --line2: rgba(255,255,255,.24);
+      --text: #fff8ea;
+      --muted: #bdb4ce;
+      --soft: #efe6ff;
+      --accent: #8d6cff;
+      --accent2: #f6d36d;
+      --aqua: #59f4df;
+      --pink: #ff79b9;
+      --danger: #ff6c8e;
+      --ok: #83ffd2;
+      --shadow: 0 24px 70px rgba(0,0,0,.38);
+      --radius: 26px;
+      --radius2: 18px;
+      --font: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at 18% 6%, rgba(255,121,185,.25), transparent 28rem),
+        radial-gradient(circle at 88% 14%, rgba(89,244,223,.18), transparent 26rem),
+        radial-gradient(circle at 50% 105%, rgba(141,108,255,.28), transparent 38rem),
+        linear-gradient(145deg, var(--bg), #080711 58%, #110d20);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .15;
+      background-image:
+        linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black, transparent 75%);
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    img { max-width: 100%; display: block; }
+
+    .app {
+      width: min(1200px, 100%);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 16px 28px;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .sidebar, .workspace, .topbar, .card {
+      border: 1px solid var(--line);
+      background: linear-gradient(160deg, rgba(255,255,255,.105), rgba(255,255,255,.045));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 14px;
+      border-radius: 32px;
+      padding: 16px;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 8px 8px 14px;
+    }
+
+    .brand img {
+      width: 76px;
+      height: 76px;
+      border-radius: 24px;
+      filter: drop-shadow(0 12px 20px rgba(0,0,0,.35));
+    }
+
+    .eyebrow {
+      font-size: .73rem;
+      color: var(--accent2);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-weight: 800;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin: 0;
+      line-height: .95;
+      font-size: clamp(1.45rem, 5vw, 2.65rem);
+      letter-spacing: -.07em;
+    }
+
+    h2 {
+      font-size: clamp(1.55rem, 4vw, 2.35rem);
+      letter-spacing: -.055em;
+      margin-bottom: 8px;
+    }
+
+    h3 { letter-spacing: -.02em; }
+    p { color: var(--muted); line-height: 1.55; }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .tab-btn {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid transparent;
+      border-radius: 18px;
+      padding: 13px 13px;
+      color: var(--soft);
+      background: transparent;
+      text-align: left;
+      transition: .18s ease;
+    }
+
+    .tab-btn:hover { background: rgba(255,255,255,.08); }
+    .tab-btn.active {
+      border-color: rgba(246,211,109,.55);
+      background: linear-gradient(135deg, rgba(141,108,255,.30), rgba(246,211,109,.12));
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+
+    .tab-btn strong { display: block; font-size: .96rem; }
+    .tab-btn small { color: var(--muted); display: block; margin-top: 2px; }
+    .tab-icon { font-size: 1.25rem; }
+
+    .workspace {
+      border-radius: 36px;
+      padding: clamp(16px, 3vw, 26px);
+      min-height: calc(100vh - 36px);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .status-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--muted);
+      background: rgba(0,0,0,.18);
+      white-space: nowrap;
+    }
+
+    .tab-panel { display: none; animation: rise .2s ease both; }
+    .tab-panel.active { display: block; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .grid { display: grid; gap: 14px; }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card {
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(0,0,0,.16);
+    }
+
+    label {
+      display: block;
+      font-weight: 800;
+      letter-spacing: -.015em;
+      margin: 0 0 8px;
+      color: var(--soft);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line2);
+      border-radius: 18px;
+      color: var(--text);
+      background: rgba(7,6,14,.58);
+      outline: none;
+      padding: 13px 14px;
+    }
+
+    textarea { min-height: 148px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { border-color: rgba(246,211,109,.72); box-shadow: 0 0 0 4px rgba(246,211,109,.08); }
+
+    .btn-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .btn {
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      padding: 11px 15px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      font-weight: 800;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.13); }
+    .btn.primary {
+      color: #1b1232;
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--accent2), #ffe8a8 42%, var(--aqua));
+    }
+    .btn.purple { background: linear-gradient(135deg, rgba(141,108,255,.75), rgba(255,121,185,.44)); }
+    .btn.danger { background: rgba(255,108,142,.13); border-color: rgba(255,108,142,.38); }
+
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.055);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: .86rem;
+    }
+
+    .output-box {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      min-height: 170px;
+      padding: 16px;
+      background: rgba(0,0,0,.20);
+      overflow: auto;
+      color: var(--soft);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .blueprint-stage {
+      position: relative;
+      min-height: 460px;
+      border: 1px solid rgba(154,215,255,.24);
+      border-radius: 28px;
+      background:
+        linear-gradient(rgba(154,215,255,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(154,215,255,.08) 1px, transparent 1px),
+        radial-gradient(circle at center, rgba(141,108,255,.18), transparent 65%),
+        rgba(4,9,18,.58);
+      background-size: 28px 28px, 28px 28px, auto, auto;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .blueprint-stage img, .blueprint-stage svg {
+      max-width: min(96%, 640px);
+      max-height: 640px;
+      border-radius: 20px;
+      object-fit: contain;
+    }
+
+    .guide-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: none;
+    }
+    .blueprint-stage.show-center .center-guide,
+    .blueprint-stage.show-thirds .thirds-guide,
+    .blueprint-stage.show-safe .safe-guide { display: block; }
+    .center-guide::before, .center-guide::after, .thirds-guide::before, .thirds-guide::after, .safe-guide::before {
+      content: "";
+      position: absolute;
+      background: rgba(255,232,168,.55);
+    }
+    .center-guide::before { width: 1px; top: 0; bottom: 0; left: 50%; }
+    .center-guide::after { height: 1px; left: 0; right: 0; top: 50%; }
+    .thirds-guide::before { width: 1px; top: 0; bottom: 0; left: 33.333%; box-shadow: calc(33.333vw) 0 rgba(255,255,255,.3); }
+    .thirds-guide::after { height: 1px; left: 0; right: 0; top: 33.333%; box-shadow: 0 calc(33.333vh) rgba(255,255,255,.3); }
+    .safe-guide::before { inset: 9%; border: 2px dashed rgba(89,244,223,.42); background: transparent; border-radius: 24%; }
+
+    .preview-row { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; }
+    .preview-tile { display: grid; gap: 8px; justify-items: center; color: var(--muted); font-size: .84rem; }
+    .preview-box { display: grid; place-items: center; background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+    .preview-box img { border-radius: 10px; }
+
+    .list { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+    .list li { border: 1px solid var(--line); border-radius: 16px; padding: 12px 13px; background: rgba(0,0,0,.16); color: var(--soft); }
+    .list small { color: var(--muted); display: block; margin-top: 4px; }
+
+    .slider-row { display: grid; grid-template-columns: 110px 1fr 110px; gap: 12px; align-items: center; color: var(--muted); }
+    input[type="range"] { padding: 0; accent-color: var(--accent2); }
+
+    .stash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .relic { border: 1px solid var(--line); border-radius: 22px; padding: 13px; background: rgba(0,0,0,.18); display: grid; gap: 10px; }
+    .relic img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 16px; background: rgba(255,255,255,.06); }
+    .relic h3 { margin: 0; font-size: 1rem; }
+
+    .notice { border-left: 4px solid var(--accent2); padding: 12px 14px; background: rgba(246,211,109,.08); border-radius: 14px; color: var(--soft); }
+    .tiny { font-size: .85rem; color: var(--muted); }
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: relative; top: 0; }
+      .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { grid-template-columns: 1fr; }
+      .two, .three, .four { grid-template-columns: 1fr; }
+      .blueprint-stage { min-height: 360px; }
+    }
+
+    @media (max-width: 560px) {
+      .app { padding-inline: 10px; }
+      .nav { grid-template-columns: 1fr; }
+      .brand { grid-template-columns: 62px 1fr; }
+      .brand img { width: 62px; height: 62px; }
+      .tab-btn { padding: 11px; }
+      .workspace { border-radius: 26px; }
+      .slider-row { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="shell">
+      <aside class="sidebar" aria-label="SCRIBBLOOM navigation">
+        <div class="brand">
+          <img src="ICON-192x192.png" alt="SCRIBBLOOM icon" />
+          <div>
+            <div class="eyebrow">AI blueprint studio</div>
+            <h1>SCRIBBLOOM</h1>
+          </div>
+        </div>
+        <nav class="nav" id="tabs" role="tablist">
+          <button class="tab-btn active" role="tab" aria-selected="true" data-tab="forge"><span><strong>Idea Forge</strong><small>Describe the thing</small></span><span class="tab-icon">✦</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="blueprint"><span><strong>Blueprint</strong><small>Traceable image map</small></span><span class="tab-icon">▧</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="lesson"><span><strong>Lesson</strong><small>Procreate steps</small></span><span class="tab-icon">◌</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="shape"><span><strong>Shape Lab</strong><small>Readability logic</small></span><span class="tab-icon">◇</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="variations"><span><strong>Variations</strong><small>Remix directions</small></span><span class="tab-icon">✺</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="fixer"><span><strong>Fixer</strong><small>Common mistakes</small></span><span class="tab-icon">✚</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="stash"><span><strong>Stash</strong><small>Saved relics</small></span><span class="tab-icon">▣</span></button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="settings"><span><strong>Settings</strong><small>OpenRouter + app</small></span><span class="tab-icon">⚙</span></button>
+        </nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="hero">
+          <div>
+            <div class="eyebrow">single-page PWA · Procreate-friendly · local stash</div>
+            <h2 id="pageTitle">Idea Forge</h2>
+            <p id="pageSubtitle">Turn a rough drawing idea into a structured blueprint, layer plan, and practice path.</p>
+          </div>
+          <div class="status-pill" id="apiStatus">OpenRouter: not connected</div>
+        </header>
+
+        <section class="tab-panel active" id="panel-forge" role="tabpanel">
+          <div class="grid two">
+            <div class="card grid">
+              <div>
+                <label for="idea">What do you want to learn to draw?</label>
+                <textarea id="idea" placeholder="Example: a chaotic-but-cute mask icon with one stitched X eye, one starry spiral eye, glossy candy colors, and a thick app-icon border."></textarea>
+              </div>
+              <div class="grid two">
+                <div>
+                  <label for="subject">Main thing</label>
+                  <select id="subject">
+                    <option>Mask</option><option>Icon</option><option>Lettering</option><option>Text logo</option><option>Banner logo</option><option>Badge</option><option>Character</option><option>Creature</option><option>Food character</option><option>Object character</option><option>Charm</option><option>Sticker</option><option>Relic</option><option>Sigil</option><option>Tool</option><option>Plant</option><option>Animal</option><option>Blob mascot</option><option>App icon</option><option>Emblem</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="level">Skill level</label>
+                  <select id="level"><option>Baby beginner</option><option selected>Beginner</option><option>Comfortable beginner</option><option>Intermediate</option></select>
+                </div>
+                <div>
+                  <label for="style">Style language</label>
+                  <select id="style"><option>Soft glossy icon</option><option>Clean blueprint</option><option>Gothic cute</option><option>Cosmic sticker</option><option>Painterly toy</option><option>Relic-tech</option><option>Dream-interface</option><option>Minimal vector</option><option>Handmade wonky</option><option>Premium app icon</option><option>Chaotic candy</option><option>Velvet neon</option></select>
+                </div>
+                <div>
+                  <label for="mood">Mood</label>
+                  <select id="mood"><option>Whimsical</option><option>Chaotic cute</option><option>Dreamy</option><option>Eerie soft</option><option>Elegant</option><option>Mischievous</option><option>Cosmic</option><option>Joyful</option><option>Gritty-pretty</option><option>Gentle weird</option><option>Luxurious</option><option>Haunted sweet</option></select>
+                </div>
+                <div>
+                  <label for="blueprintMode">Blueprint mode</label>
+                  <select id="blueprintMode"><option>Trace Mode</option><option>Construction Mode</option><option>Layer Mode</option><option>Silhouette Mode</option><option>Detail Mode</option><option>Freestyle Mode</option></select>
+                </div>
+                <div>
+                  <label for="canvasPreset">Canvas preset</label>
+                  <select id="canvasPreset"><option>1024 × 1024 PWA icon</option><option>512 × 512 app icon</option><option>2048 × 2048 sticker</option><option>3000 × 3000 logo mark</option><option>1920 × 1080 banner</option><option>2048 × 2732 iPad portrait</option></select>
+                </div>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" id="generateFull">Generate full blueprint kit</button>
+                <button class="btn purple" id="makePrompt">Refine prompt only</button>
+                <button class="btn" id="randomIdea">Chaos idea</button>
+              </div>
+              <div class="notice tiny">Each major tool opens under its own tab. The main page stays clean; generated details are routed into Blueprint, Lesson, Shape Lab, Variations, Fixer, and Stash.</div>
+            </div>
+
+            <div class="card grid">
+              <h3>Prompt Refinery</h3>
+              <p>Use this when your idea is vague. SCRIBBLOOM will convert it into a stronger blueprint prompt.</p>
+              <div class="output-box" id="promptOutput">Your refined prompt will appear here.</div>
+              <div class="btn-row">
+                <button class="btn" id="copyPrompt">Copy prompt</button>
+                <button class="btn" id="sendToBlueprint">Use for blueprint</button>
+              </div>
+              <div class="chips">
+                <span class="chip">traceable</span><span class="chip">labeled</span><span class="chip">beginner-safe</span><span class="chip">Procreate layers</span><span class="chip">tiny-icon readable</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-blueprint" role="tabpanel">
+          <div class="grid">
+            <div class="card">
+              <div class="btn-row" style="justify-content: space-between; margin-bottom: 14px;">
+                <div class="btn-row">
+                  <button class="btn primary" id="generateImage">Generate AI blueprint image</button>
+                  <button class="btn" id="fallbackBlueprint">Create local SVG blueprint</button>
+                  <button class="btn" id="downloadBlueprint">Download blueprint</button>
+                </div>
+                <div class="chips"><span class="chip" id="blueprintLabel">No blueprint yet</span></div>
+              </div>
+              <div class="blueprint-stage show-center show-safe" id="blueprintStage">
+                <div class="guide-overlay center-guide"></div>
+                <div class="guide-overlay thirds-guide"></div>
+                <div class="guide-overlay safe-guide"></div>
+                <div id="blueprintMount" class="tiny">Generate a blueprint or create a local SVG guide.</div>
+              </div>
+            </div>
+            <div class="grid two">
+              <div class="card grid">
+                <h3>Overlay controls</h3>
+                <div class="btn-row">
+                  <button class="btn" data-toggle-guide="show-center">Centerline</button>
+                  <button class="btn" data-toggle-guide="show-thirds">Thirds</button>
+                  <button class="btn" data-toggle-guide="show-safe">Safe area</button>
+                </div>
+                <p class="tiny">Use these over the blueprint as Procreate tracing aids. Export the image, then recreate the guides on separate Procreate layers.</p>
+              </div>
+              <div class="card grid">
+                <h3>Tiny icon preview</h3>
+                <div class="preview-row" id="previewRow"><span class="tiny">A blueprint preview appears after generation.</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-lesson" role="tabpanel">
+          <div class="grid two">
+            <div class="card grid">
+              <h3>Drawing steps</h3>
+              <ol class="list" id="stepsList"></ol>
+            </div>
+            <div class="card grid">
+              <h3>Procreate layer plan</h3>
+              <ul class="list" id="layersList"></ul>
+            </div>
+            <div class="card grid">
+              <h3>Brush suggestions</h3>
+              <ul class="list" id="brushList"></ul>
+            </div>
+            <div class="card grid">
+              <h3>Practice mission</h3>
+              <div class="output-box" id="missionBox">Generate a kit to receive a focused practice mission.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-shape" role="tabpanel">
+          <div class="grid two">
+            <div class="card grid">
+              <h3>Shape-language breakdown</h3>
+              <div class="output-box" id="shapeBox">Shape logic will appear here.</div>
+            </div>
+            <div class="card grid">
+              <h3>Design sliders</h3>
+              <div class="slider-row"><span>Cute</span><input type="range" min="0" max="100" value="64"><span>Creepy</span></div>
+              <div class="slider-row"><span>Soft</span><input type="range" min="0" max="100" value="38"><span>Sharp</span></div>
+              <div class="slider-row"><span>Simple</span><input type="range" min="0" max="100" value="48"><span>Detailed</span></div>
+              <div class="slider-row"><span>Flat</span><input type="range" min="0" max="100" value="58"><span>Dimensional</span></div>
+              <div class="slider-row"><span>Clean</span><input type="range" min="0" max="100" value="55"><span>Textured</span></div>
+              <div class="slider-row"><span>Calm</span><input type="range" min="0" max="100" value="70"><span>Chaotic</span></div>
+            </div>
+            <div class="card grid">
+              <h3>Icon anatomy</h3>
+              <ul class="list" id="anatomyList"></ul>
+            </div>
+            <div class="card grid">
+              <h3>Readability checklist</h3>
+              <ul class="list" id="readabilityList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-variations" role="tabpanel">
+          <div class="card grid">
+            <div class="btn-row" style="justify-content: space-between;">
+              <h3 style="margin:0">Variation engine</h3>
+              <button class="btn" id="generateVariations">Generate more variations</button>
+            </div>
+            <div class="grid three" id="variationGrid"></div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-fixer" role="tabpanel">
+          <div class="grid two">
+            <div class="card grid">
+              <h3>Fix my drawing</h3>
+              <label for="problemInput">Describe what feels wrong</label>
+              <textarea id="problemInput" placeholder="Example: It looks messy, the eyes feel uneven, and the icon is not readable when small."></textarea>
+              <button class="btn primary" id="fixProblem">Diagnose problem</button>
+            </div>
+            <div class="card grid">
+              <h3>Correction plan</h3>
+              <div class="output-box" id="fixOutput">Your correction plan will appear here.</div>
+            </div>
+            <div class="card grid">
+              <h3>Common beginner fixes</h3>
+              <ul class="list" id="fixList"></ul>
+            </div>
+            <div class="card grid">
+              <h3>Procreate reminders</h3>
+              <ul class="list" id="procreateReminders"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-stash" role="tabpanel">
+          <div class="card grid">
+            <div class="btn-row" style="justify-content: space-between;">
+              <div>
+                <h3 style="margin-bottom: 4px;">Saved relics</h3>
+                <p class="tiny" style="margin:0">Saved locally on this device. Good for GitHub Pages, Netlify, Cloudflare Pages, and Vercel static hosting.</p>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" id="saveRelic">Save current kit</button>
+                <button class="btn danger" id="clearStash">Clear stash</button>
+              </div>
+            </div>
+            <div class="stash-grid" id="stashGrid"></div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="panel-settings" role="tabpanel">
+          <div class="grid two">
+            <div class="card grid">
+              <h3>OpenRouter setup</h3>
+              <div class="notice tiny">For a public GitHub Pages app, do not hardcode your API key. Paste it here at runtime. It can be saved locally on your own device.</div>
+              <div>
+                <label for="apiKey">OpenRouter API key</label>
+                <input id="apiKey" type="password" placeholder="sk-or-v1-..." autocomplete="off" />
+              </div>
+              <div>
+                <label for="textModel">Text / planning model</label>
+                <input id="textModel" value="openrouter/auto" />
+              </div>
+              <div>
+                <label for="imageModel">Image blueprint model</label>
+                <input id="imageModel" placeholder="Choose an OpenRouter image-capable model" />
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" id="saveSettings">Save settings</button>
+                <button class="btn" id="testKey">Test text call</button>
+                <button class="btn danger" id="clearSettings">Clear key</button>
+              </div>
+            </div>
+            <div class="card grid">
+              <h3>App notes</h3>
+              <ul class="list">
+                <li><strong>Static build.</strong><small>Everything is client-side. No backend, routing, build tools, or paid hosting required.</small></li>
+                <li><strong>Image generation depends on model support.</strong><small>If your chosen image model fails, use the local SVG blueprint button or try a different OpenRouter image-capable model.</small></li>
+                <li><strong>Best workflow.</strong><small>Generate blueprint → save image → import to Procreate → lower opacity → trace on a new layer → customize.</small></li>
+                <li><strong>Privacy.</strong><small>Your saved relics and optional API key are stored only in this browser through localStorage.</small></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    const $ = selector => document.querySelector(selector);
+    const $$ = selector => [...document.querySelectorAll(selector)];
+
+    const STORAGE = {
+      settings: 'scribbloom.settings.v1',
+      stash: 'scribbloom.stash.v1',
+      current: 'scribbloom.current.v1'
+    };
+
+    const defaultKit = {
+      title: 'Unbloomed Idea',
+      prompt: '',
+      blueprintPrompt: '',
+      imageUrl: '',
+      steps: [
+        'Start with the largest silhouette. Do not draw details first.',
+        'Add a centerline and simple construction shapes.',
+        'Place the main focal features using circles, ovals, or soft rectangles.',
+        'Clean the contour on a new layer with a stable brush.',
+        'Add shadows, highlights, texture, and final border last.'
+      ],
+      layers: [
+        'Sketch Guide — rough shapes, centerline, proportions',
+        'Clean Silhouette — final outer form',
+        'Feature Map — eyes, mouth, symbols, lettering, or details',
+        'Shadow Shapes — simple dark forms under details',
+        'Highlight Glints — small bright marks that show gloss',
+        'Texture Dust — grain, dots, scratches, or soft noise',
+        'Final Border — sticker edge, icon rim, or glow aura'
+      ],
+      brushes: ['6B Pencil for sketching', 'Studio Pen for clean linework', 'Monoline for smooth icon edges', 'Soft Airbrush for glow/shadow', 'Noise or grain brush for final texture'],
+      shapeLanguage: 'Rounded forms feel friendly and readable. Sharp accents add chaos. Keep the silhouette simple so the inner details can carry personality without becoming muddy.',
+      anatomy: ['Outer silhouette', 'Primary focal point', 'Secondary details', 'Border/rim system', 'Shadow logic', 'Highlight logic', 'Texture layer', 'Tiny-size readability'],
+      readability: ['Can the silhouette be recognized at 64px?', 'Are the most important details larger than you think they need to be?', 'Is there one clear focal point?', 'Can the design survive in black and white?', 'Did you remove tiny decorative noise before exporting?'],
+      variations: [],
+      mission: 'Draw the same idea three times: simple, expressive, and polished. Keep the silhouette identical so you can see how details change the mood.',
+      fixTips: []
+    };
+
+    let state = {
+      kit: load(STORAGE.current, defaultKit),
+      settings: load(STORAGE.settings, { apiKey: '', textModel: 'openrouter/auto', imageModel: '' }),
+      stash: load(STORAGE.stash, [])
+    };
+
+    const titles = {
+      forge: ['Idea Forge', 'Turn a rough drawing idea into a structured blueprint, layer plan, and practice path.'],
+      blueprint: ['Blueprint', 'Generate or build a traceable image map with guide overlays and tiny preview checks.'],
+      lesson: ['Lesson', 'Follow beginner-safe Procreate steps, layers, brush suggestions, and practice missions.'],
+      shape: ['Shape Lab', 'Decode why the design works through silhouette, contrast, and shape language.'],
+      variations: ['Variations', 'Push the same idea into different moods without losing readability.'],
+      fixer: ['Fixer', 'Diagnose messy, uneven, flat, or unreadable drawings with simple corrections.'],
+      stash: ['Stash', 'Save projects locally as reusable drawing relics.'],
+      settings: ['Settings', 'Connect OpenRouter, choose models, and manage local storage.']
+    };
+
+    function load(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+      catch { return fallback; }
+    }
+
+    function save(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function setTab(name) {
+      $$('.tab-btn').forEach(btn => {
+        const active = btn.dataset.tab === name;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', String(active));
+      });
+      $$('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `panel-${name}`));
+      $('#pageTitle').textContent = titles[name][0];
+      $('#pageSubtitle').textContent = titles[name][1];
+    }
+
+    $('#tabs').addEventListener('click', event => {
+      const btn = event.target.closest('.tab-btn');
+      if (!btn) return;
+      setTab(btn.dataset.tab);
+    });
+
+    function updateStatus() {
+      const connected = Boolean(state.settings.apiKey);
+      $('#apiStatus').textContent = connected ? 'OpenRouter: key saved locally' : 'OpenRouter: not connected';
+      $('#apiKey').value = state.settings.apiKey || '';
+      $('#textModel').value = state.settings.textModel || 'openrouter/auto';
+      $('#imageModel').value = state.settings.imageModel || '';
+    }
+
+    function currentInputs() {
+      return {
+        idea: $('#idea').value.trim(),
+        subject: $('#subject').value,
+        level: $('#level').value,
+        style: $('#style').value,
+        mood: $('#mood').value,
+        blueprintMode: $('#blueprintMode').value,
+        canvasPreset: $('#canvasPreset').value
+      };
+    }
+
+    function buildRefinedPrompt(inputs = currentInputs()) {
+      const idea = inputs.idea || `a ${inputs.mood.toLowerCase()} ${inputs.subject.toLowerCase()} in a ${inputs.style.toLowerCase()} style`;
+      return `Create a detailed, traceable Procreate blueprint for: ${idea}.
+
+Subject type: ${inputs.subject}.
+Skill level: ${inputs.level}.
+Style language: ${inputs.style}.
+Mood: ${inputs.mood}.
+Blueprint mode: ${inputs.blueprintMode}.
+Canvas preset: ${inputs.canvasPreset}.
+
+Required blueprint details:
+- clean outer silhouette
+- beginner-friendly construction shapes
+- centerline and proportional anchor points
+- labeled zones for main features
+- simple shadow map
+- highlight/gloss map
+- optional texture zones
+- Procreate layer order
+- tiny-icon readability notes
+- leave small creative freedom zones so the artist can customize
+
+Image style for blueprint:
+- clean black/indigo line art on a pale blueprint sheet or transparent-feeling background
+- clear labels, arrows, symmetry guides, and soft construction circles
+- not a finished illustration; it should be useful as a drawing map.`;
+    }
+
+    function fallbackKit() {
+      const inputs = currentInputs();
+      const title = `${inputs.mood} ${inputs.subject}`;
+      return {
+        ...defaultKit,
+        title,
+        prompt: inputs.idea,
+        blueprintPrompt: buildRefinedPrompt(inputs),
+        steps: [
+          `Create a new ${inputs.canvasPreset} canvas in Procreate.`,
+          `On Layer 1, lightly sketch the biggest ${inputs.subject.toLowerCase()} silhouette with simple circles, ovals, or rounded boxes.`,
+          'Add a centerline. Use it as a guide, not a prison; small asymmetry can make the design feel alive.',
+          'Block in the biggest facial, letter, or symbol details before adding tiny decoration.',
+          'Lower sketch opacity, create a clean line layer, and redraw only the strongest shapes.',
+          'Add one shadow layer under major features. Keep shadows simple and readable.',
+          'Add highlights/gloss only where the form should feel raised, shiny, or important.',
+          'Zoom out and check the design at 192px, 64px, and 32px. Remove details that vanish.'
+        ],
+        layers: [
+          '01 Rough Bloom — loose idea sketch and energy lines',
+          '02 Blueprint Bones — centerline, circles, boxes, symmetry anchors',
+          '03 Main Silhouette — clean outside shape',
+          '04 Feature Garden — eyes, mouth, lettering, symbols, or inner forms',
+          '05 Shadow Petals — simple darker shapes for depth',
+          '06 Glow Dew — highlights, sparkles, glossy spots',
+          '07 Texture Pollen — grain, stipple, scuffs, brush charm',
+          '08 Final Rim — thick icon border, sticker outline, or badge edge'
+        ],
+        brushes: [
+          '6B Pencil — rough shape discovery',
+          'Technical Pen or Studio Pen — clean contours',
+          'Monoline — smooth icon borders and lettering',
+          'Soft Airbrush — glow, shadow, blush, atmosphere',
+          'Noise/Grain brush — subtle handmade texture'
+        ],
+        shapeLanguage: `${inputs.subject} should stay readable through a strong outer silhouette first. Use rounded forms for softness, sharper accents for ${inputs.mood.toLowerCase()} tension, and one dominant focal detail so the icon does not become visual soup. The design should work as a symbol before it works as a decoration.`,
+        anatomy: ['Silhouette: the readable outside shape', 'Focal feature: the first thing the eye sees', 'Support details: smaller marks that add personality', 'Border system: makes it feel like an icon or sticker', 'Depth system: shadows under raised features', 'Gloss system: tiny highlights and sparkle anchors', 'Texture system: final handmade imperfection'],
+        readability: ['Squint test: can you still identify the subject?', 'Small test: does it work at 64px?', 'Contrast test: are important forms separated?', 'Detail test: can 30% of decoration be removed?', 'Layer test: could a beginner build this one layer at a time?'],
+        mission: `Draw 4 tiny ${inputs.subject.toLowerCase()} thumbnails. Pick the clearest silhouette, then redraw it once cute, once strange, and once polished.`,
+        variations: makeLocalVariations(inputs),
+        fixTips: commonFixes()
+      };
+    }
+
+    function makeLocalVariations(inputs = currentInputs()) {
+      const base = inputs.subject.toLowerCase();
+      return [
+        { title: 'Soft Bloom', body: `Make the ${base} rounder, brighter, and simpler. Use fewer sharp details and bigger friendly features.` },
+        { title: 'Chaotic Bloom', body: `Keep the silhouette stable, but add asymmetrical feature placement, spiral details, tiny sparks, and odd little marks.` },
+        { title: 'Premium Icon', body: `Add a thick rim, controlled highlights, clean shadow shapes, and a polished app-icon finish.` },
+        { title: 'Gothic Candy', body: `Mix soft glossy colors with pointed accents, jewel shadows, tiny stars, and slightly eerie symmetry.` },
+        { title: 'Sticker Mode', body: `Use a bold white or gold outline, simplified inner details, and a readable expression.` },
+        { title: 'Relic-Tech', body: `Add badge framing, tiny engraved guide marks, metallic edge logic, and glowing symbolic details.` }
+      ];
+    }
+
+    function commonFixes() {
+      return [
+        'If it looks messy: reduce small details by 40% and make the silhouette bigger.',
+        'If it looks uneven: draw a centerline, then place features using simple anchor dots.',
+        'If it looks flat: add one shadow under each raised feature, not everywhere.',
+        'If it looks too cute: shrink the eyes slightly and sharpen one or two accents.',
+        'If it looks too creepy: round the silhouette and add softer highlight shapes.',
+        'If it fails small: thicken the outer shape, remove tiny texture, and enlarge the focal point.'
+      ];
+    }
+
+    async function callOpenRouter(messages, options = {}) {
+      if (!state.settings.apiKey) throw new Error('No OpenRouter API key saved in Settings.');
+      const body = {
+        model: options.model || state.settings.textModel || 'openrouter/auto',
+        messages,
+        temperature: options.temperature ?? 0.7
+      };
+      if (options.modalities) body.modalities = options.modalities;
+      if (options.response_format) body.response_format = options.response_format;
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.settings.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': location.origin,
+          'X-Title': 'SCRIBBLOOM'
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    }
+
+    async function generateFullKit() {
+      const inputs = currentInputs();
+      if (!inputs.idea) $('#idea').value = `a ${inputs.mood.toLowerCase()} ${inputs.subject.toLowerCase()} for Procreate practice`;
+      $('#promptOutput').textContent = 'Blooming the blueprint kit...';
+      let kit;
+      try {
+        const prompt = `You are SCRIBBLOOM, an expert Procreate icon teacher. Return strict JSON only. Build a beginner-friendly drawing blueprint kit.
+
+User inputs:
+${JSON.stringify(currentInputs(), null, 2)}
+
+Return this JSON shape:
+{
+  "title": "short title",
+  "blueprintPrompt": "detailed image prompt for a traceable blueprint sheet",
+  "steps": ["8 beginner drawing steps"],
+  "layers": ["8 Procreate layers with names and purposes"],
+  "brushes": ["5 Procreate brush suggestions"],
+  "shapeLanguage": "paragraph explaining silhouette, shape logic, contrast, and mood",
+  "anatomy": ["7 icon anatomy notes"],
+  "readability": ["5 tiny icon readability checks"],
+  "mission": "one practice mission",
+  "variations": [{"title":"variation name","body":"how to redraw it"}],
+  "fixTips": ["6 beginner mistake fixes"]
+}`;
+        const data = await callOpenRouter([
+          { role: 'system', content: 'Return valid JSON only. No markdown.' },
+          { role: 'user', content: prompt }
+        ], { response_format: { type: 'json_object' } });
+        const text = data.choices?.[0]?.message?.content || '{}';
+        kit = { ...fallbackKit(), ...JSON.parse(text), prompt: currentInputs().idea };
+      } catch (error) {
+        kit = fallbackKit();
+        kit.shapeLanguage += `\n\nAI note: OpenRouter was not used for this kit. Reason: ${error.message.slice(0, 220)}`;
+      }
+      state.kit = kit;
+      save(STORAGE.current, state.kit);
+      renderAll();
+      setTab('blueprint');
+    }
+
+    async function generateAIImage() {
+      const prompt = state.kit.blueprintPrompt || buildRefinedPrompt();
+      $('#blueprintLabel').textContent = 'Generating AI image...';
+      try {
+        if (!state.settings.imageModel) throw new Error('Add an image-capable model in Settings first.');
+        const data = await callOpenRouter([
+          { role: 'user', content: prompt }
+        ], { model: state.settings.imageModel, modalities: ['image', 'text'], temperature: 0.85 });
+        const message = data.choices?.[0]?.message || {};
+        let url = message.images?.[0]?.image_url?.url;
+        if (!url && Array.isArray(message.content)) {
+          const imagePart = message.content.find(part => part.type === 'image_url' || part.image_url);
+          url = imagePart?.image_url?.url || imagePart?.url;
+        }
+        if (!url) throw new Error('The model responded, but no image URL was found.');
+        state.kit.imageUrl = url;
+        save(STORAGE.current, state.kit);
+        renderBlueprint();
+        $('#blueprintLabel').textContent = 'AI blueprint ready';
+      } catch (error) {
+        $('#blueprintLabel').textContent = 'AI failed; local SVG created';
+        createLocalBlueprint(error.message);
+      }
+    }
+
+    function createLocalBlueprint(note = '') {
+      const inputs = currentInputs();
+      const title = state.kit.title || `${inputs.mood} ${inputs.subject}`;
+      const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fdf8ff"/><stop offset=".5" stop-color="#dff8ff"/><stop offset="1" stop-color="#f9e6ff"/></linearGradient>
+          <filter id="soft"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#3d2b78" flood-opacity=".28"/></filter>
+        </defs>
+        <rect width="1024" height="1024" rx="64" fill="url(#bg)"/>
+        <g stroke="#7d67c8" stroke-width="2" opacity=".28">
+          ${Array.from({length: 17}, (_,i)=>`<path d="M${i*64} 0V1024M0 ${i*64}H1024"/>`).join('')}
+        </g>
+        <path d="M512 70V954M70 512H954" stroke="#ff78ad" stroke-width="5" stroke-dasharray="18 16" opacity=".7"/>
+        <rect x="118" y="118" width="788" height="788" rx="178" fill="none" stroke="#59cfe4" stroke-width="6" stroke-dasharray="24 16" opacity=".7"/>
+        <g filter="url(#soft)">
+          <path d="M228 357C258 235 396 155 512 177c116-22 254 58 284 180 34 136-44 333-284 443-240-110-318-307-284-443Z" fill="rgba(255,255,255,.72)" stroke="#271b63" stroke-width="16"/>
+          <ellipse cx="512" cy="456" rx="158" ry="170" fill="none" stroke="#8d6cff" stroke-width="9" stroke-dasharray="22 13"/>
+          <ellipse cx="360" cy="510" rx="118" ry="100" fill="none" stroke="#ff79b9" stroke-width="9" stroke-dasharray="22 13"/>
+          <ellipse cx="664" cy="510" rx="118" ry="100" fill="none" stroke="#59f4df" stroke-width="9" stroke-dasharray="22 13"/>
+          <circle cx="410" cy="444" r="53" fill="none" stroke="#271b63" stroke-width="13"/>
+          <path d="M374 408l72 72M446 408l-72 72" stroke="#271b63" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="615" cy="444" r="57" fill="none" stroke="#271b63" stroke-width="13"/>
+          <path d="M591 444c22-38 72-12 45 20-22 26-66 14-48-18 13-23 45-13 38 8" fill="none" stroke="#271b63" stroke-width="9" stroke-linecap="round"/>
+          <path d="M477 572c16 28 54 28 70 0" fill="none" stroke="#271b63" stroke-width="13" stroke-linecap="round"/>
+          <path d="M309 613c98 76 308 93 406 0" fill="none" stroke="#ffbf4f" stroke-width="10" stroke-dasharray="30 18" opacity=".85"/>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="24" fill="#271b63" font-weight="800">
+          <text x="70" y="74">SCRIBBLOOM BLUEPRINT: ${escapeXml(title)}</text>
+          <text x="68" y="955">1 silhouette · 2 construction · 3 features · 4 shadows · 5 highlights · 6 texture · 7 final rim</text>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="20" fill="#4f3d91">
+          <text x="692" y="220">safe icon area</text><path d="M700 230c72 42 119 110 126 185" stroke="#4f3d91" fill="none" marker-end="url(#arrow)"/>
+          <text x="72" y="210">centerline</text>
+          <text x="684" y="790">shadow/highlight map</text>
+          <text x="80" y="808">creative freedom zone</text>
+          ${note ? `<text x="70" y="910" font-size="16" fill="#9a3860">AI note: ${escapeXml(note.slice(0,120))}</text>` : ''}
+        </g>
+      </svg>`;
+      state.kit.imageUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      save(STORAGE.current, state.kit);
+      renderBlueprint();
+    }
+
+    function escapeXml(text) {
+      return String(text).replace(/[<>&"']/g, char => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[char]));
+    }
+
+    function renderAll() {
+      renderPrompt();
+      renderBlueprint();
+      renderLesson();
+      renderShape();
+      renderVariations();
+      renderFixer();
+      renderStash();
+      updateStatus();
+    }
+
+    function renderPrompt() {
+      const prompt = state.kit.blueprintPrompt || buildRefinedPrompt();
+      $('#promptOutput').textContent = prompt;
+    }
+
+    function renderBlueprint() {
+      const mount = $('#blueprintMount');
+      mount.innerHTML = '';
+      if (state.kit.imageUrl) {
+        const img = new Image();
+        img.src = state.kit.imageUrl;
+        img.alt = `${state.kit.title} blueprint`;
+        mount.appendChild(img);
+        $('#blueprintLabel').textContent = state.kit.title || 'Blueprint ready';
+        renderPreviews(state.kit.imageUrl);
+      } else {
+        mount.textContent = 'Generate a blueprint or create a local SVG guide.';
+      }
+    }
+
+    function renderPreviews(url) {
+      const sizes = [512, 192, 64, 32];
+      $('#previewRow').innerHTML = sizes.map(size => `
+        <div class="preview-tile">
+          <div class="preview-box" style="width:${Math.max(size/2, 54)}px;height:${Math.max(size/2, 54)}px">
+            <img src="${url}" alt="${size}px preview" style="width:${Math.min(size/2, 72)}px;height:${Math.min(size/2, 72)}px;object-fit:cover">
+          </div>
+          <span>${size}px</span>
+        </div>`).join('');
+    }
+
+    function renderLesson() {
+      $('#stepsList').innerHTML = (state.kit.steps || []).map(item => `<li>${escapeXml(item)}</li>`).join('');
+      $('#layersList').innerHTML = (state.kit.layers || []).map(item => `<li>${escapeXml(item)}</li>`).join('');
+      $('#brushList').innerHTML = (state.kit.brushes || []).map(item => `<li>${escapeXml(item)}</li>`).join('');
+      $('#missionBox').textContent = state.kit.mission || defaultKit.mission;
+    }
+
+    function renderShape() {
+      $('#shapeBox').textContent = state.kit.shapeLanguage || defaultKit.shapeLanguage;
+      $('#anatomyList').innerHTML = (state.kit.anatomy || defaultKit.anatomy).map(item => `<li>${escapeXml(item)}</li>`).join('');
+      $('#readabilityList').innerHTML = (state.kit.readability || defaultKit.readability).map(item => `<li>${escapeXml(item)}</li>`).join('');
+    }
+
+    function renderVariations() {
+      const variations = state.kit.variations?.length ? state.kit.variations : makeLocalVariations();
+      $('#variationGrid').innerHTML = variations.map(v => `<article class="mini-card"><h3>${escapeXml(v.title)}</h3><p>${escapeXml(v.body)}</p></article>`).join('');
+    }
+
+    function renderFixer() {
+      $('#fixList').innerHTML = commonFixes().map(item => `<li>${escapeXml(item)}</li>`).join('');
+      $('#procreateReminders').innerHTML = [
+        'Lower sketch opacity before clean linework.',
+        'Keep construction, lineart, shadows, highlights, and texture on separate layers.',
+        'Use clipping masks when shading inside one shape.',
+        'Export PNG when you need transparency.',
+        'Do not merge too early; beginners need editable layers.'
+      ].map(item => `<li>${escapeXml(item)}</li>`).join('');
+    }
+
+    function renderStash() {
+      if (!state.stash.length) {
+        $('#stashGrid').innerHTML = '<p class="tiny">No saved relics yet. Save your current kit after generating a blueprint.</p>';
+        return;
+      }
+      $('#stashGrid').innerHTML = state.stash.map((item, index) => `
+        <article class="relic">
+          ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${escapeXml(item.title)}">` : ''}
+          <h3>${escapeXml(item.title)}</h3>
+          <div class="tiny">${escapeXml(item.date)} · ${escapeXml(item.status || 'not started')}</div>
+          <p class="tiny">${escapeXml((item.prompt || item.blueprintPrompt || '').slice(0, 120))}</p>
+          <div class="btn-row">
+            <button class="btn" data-load-relic="${index}">Open</button>
+            <button class="btn" data-status-relic="${index}">Mark drawn</button>
+            <button class="btn danger" data-delete-relic="${index}">Delete</button>
+          </div>
+        </article>`).join('');
+    }
+
+    function saveRelic() {
+      const relic = {
+        ...state.kit,
+        id: crypto.randomUUID?.() || String(Date.now()),
+        date: new Date().toLocaleString(),
+        status: 'not started'
+      };
+      state.stash.unshift(relic);
+      save(STORAGE.stash, state.stash);
+      renderStash();
+      setTab('stash');
+    }
+
+    function diagnoseProblem() {
+      const problem = $('#problemInput').value.trim() || 'The drawing feels unfinished, messy, and hard to read when small.';
+      const subject = $('#subject').value;
+      $('#fixOutput').textContent = `Diagnosis for your ${subject.toLowerCase()}:
+
+1. First check the silhouette. If the outside shape is unclear, no amount of detail will save it.
+2. Remove or enlarge tiny marks that disappear at 64px.
+3. Pick one dominant focal point. Let the other details support it.
+4. Put construction guides back on: centerline, thirds, and a safe-area frame.
+5. Add depth in this order: shadow under features, highlight on raised edges, then texture last.
+6. Redraw one simplified version before polishing. The simplified version usually reveals the real design.`;
+    }
+
+    $('#generateFull').addEventListener('click', generateFullKit);
+    $('#makePrompt').addEventListener('click', () => {
+      state.kit = { ...state.kit, prompt: currentInputs().idea, blueprintPrompt: buildRefinedPrompt() };
+      save(STORAGE.current, state.kit);
+      renderPrompt();
+    });
+    $('#randomIdea').addEventListener('click', () => {
+      const subjects = ['a sleepy star mask', 'a haunted candy letter B', 'a mushroom badge mascot', 'a glossy moon creature icon', 'a relic-tech flower charm', 'a tiny chaotic food wizard', 'a soft gothic cloud sticker'];
+      const details = ['with mismatched eyes', 'with a ribbon banner', 'with sparkle scars', 'with puffy toy shading', 'with a thick premium border', 'with a tiny mischievous mouth'];
+      $('#idea').value = `${subjects[Math.floor(Math.random()*subjects.length)]} ${details[Math.floor(Math.random()*details.length)]}`;
+    });
+    $('#copyPrompt').addEventListener('click', async () => navigator.clipboard.writeText($('#promptOutput').textContent));
+    $('#sendToBlueprint').addEventListener('click', () => setTab('blueprint'));
+    $('#generateImage').addEventListener('click', generateAIImage);
+    $('#fallbackBlueprint').addEventListener('click', () => createLocalBlueprint());
+    $('#downloadBlueprint').addEventListener('click', () => {
+      if (!state.kit.imageUrl) return createLocalBlueprint();
+      const a = document.createElement('a');
+      a.href = state.kit.imageUrl;
+      a.download = `${(state.kit.title || 'scribbloom-blueprint').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.png`;
+      a.click();
+    });
+    $$('[data-toggle-guide]').forEach(btn => btn.addEventListener('click', () => $('#blueprintStage').classList.toggle(btn.dataset.toggleGuide)));
+    $('#generateVariations').addEventListener('click', () => { state.kit.variations = makeLocalVariations(currentInputs()); save(STORAGE.current, state.kit); renderVariations(); });
+    $('#fixProblem').addEventListener('click', diagnoseProblem);
+    $('#saveRelic').addEventListener('click', saveRelic);
+    $('#clearStash').addEventListener('click', () => { if(confirm('Clear all saved relics on this device?')) { state.stash = []; save(STORAGE.stash, []); renderStash(); } });
+    $('#stashGrid').addEventListener('click', event => {
+      const loadIndex = event.target.dataset.loadRelic;
+      const statusIndex = event.target.dataset.statusRelic;
+      const deleteIndex = event.target.dataset.deleteRelic;
+      if (loadIndex !== undefined) { state.kit = state.stash[Number(loadIndex)]; save(STORAGE.current, state.kit); renderAll(); setTab('blueprint'); }
+      if (statusIndex !== undefined) { state.stash[Number(statusIndex)].status = 'drawn'; save(STORAGE.stash, state.stash); renderStash(); }
+      if (deleteIndex !== undefined) { state.stash.splice(Number(deleteIndex), 1); save(STORAGE.stash, state.stash); renderStash(); }
+    });
+    $('#saveSettings').addEventListener('click', () => {
+      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'openrouter/auto', imageModel: $('#imageModel').value.trim() };
+      save(STORAGE.settings, state.settings);
+      updateStatus();
+    });
+    $('#clearSettings').addEventListener('click', () => { state.settings = { apiKey: '', textModel: 'openrouter/auto', imageModel: '' }; save(STORAGE.settings, state.settings); updateStatus(); });
+    $('#testKey').addEventListener('click', async () => {
+      $('#apiStatus').textContent = 'Testing OpenRouter...';
+      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'openrouter/auto', imageModel: $('#imageModel').value.trim() };
+      save(STORAGE.settings, state.settings);
+      try {
+        const data = await callOpenRouter([{ role: 'user', content: 'Reply with exactly: SCRIBBLOOM connected' }], { temperature: 0 });
+        $('#apiStatus').textContent = data.choices?.[0]?.message?.content?.slice(0, 80) || 'Connected';
+      } catch (error) {
+        $('#apiStatus').textContent = `Test failed: ${error.message.slice(0, 80)}`;
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>

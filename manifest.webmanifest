@@ -1,0 +1,25 @@
+{
+  "name": "SCRIBBLOOM",
+  "short_name": "SCRIBBLOOM",
+  "description": "An AI blueprint studio for learning to draw icons, masks, letters, creatures, charms, and symbolic objects in Procreate.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0a18",
+  "theme_color": "#8d6cff",
+  "icons": [
+    {
+      "src": "ICON-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "ICON-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
