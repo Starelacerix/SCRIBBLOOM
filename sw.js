@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scribbloom-v8-free-only-better-prompts';
+const CACHE_NAME = 'scribbloom-v9-text-model-fallbacks';
 const ASSETS = [
   './',
   './index.html',

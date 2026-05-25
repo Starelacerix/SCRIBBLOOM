@@ -628,7 +628,18 @@
               </div>
               <div>
                 <label for="textModel">Text / planning model</label>
-                <input id="textModel" value="google/gemma-4-31b-it:free" />
+                <select id="textModel">
+                  <option value="auto-free" selected>Auto fallback — free models</option>
+                  <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B — free</option>
+                  <option value="google/gemma-4-26b-a4b-it:free">Google Gemma 4 26B A4B — free</option>
+                  <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">NVIDIA Nemotron 3 Nano Omni — free</option>
+                  <option value="openrouter/auto">OpenRouter auto</option>
+                  <option value="custom">Custom model below</option>
+                </select>
+              </div>
+              <div id="customTextModelWrap">
+                <label for="customTextModel">Custom OpenRouter text model</label>
+                <input id="customTextModel" placeholder="Example: provider/model:free" />
               </div>
               <div>
                 <label for="imageProvider">Blueprint image provider</label>
@@ -653,7 +664,7 @@
               <ul class="list">
                 <li><strong>Static build.</strong><small>Everything is client-side. No backend, routing, build tools, or paid hosting required.</small></li>
                 <li><strong>Image route.</strong><small>SCRIBBLOOM now uses Pollinations as the default no-key image generator, Puter as the backup, and local SVG as a guaranteed fallback.</small></li>
-                <li><strong>OpenRouter role.</strong><small>OpenRouter is text-only here: planning, prompt building, lessons, and critique. Blueprint images come from Pollinations, Puter, or the local SVG tool.</small></li>
+                <li><strong>OpenRouter role.</strong><small>OpenRouter is text-only here: planning, prompt building, lessons, and critique. If one free model returns a 429/rate-limit provider error, SCRIBBLOOM now automatically tries the next free fallback model. Blueprint images come from Pollinations, Puter, or the local SVG tool.</small></li>
                 <li><strong>Best workflow.</strong><small>Generate blueprint → save image → import to Procreate → lower opacity → trace on a new layer → customize.</small></li>
                 <li><strong>Privacy.</strong><small>Your saved relics and optional API key are stored only in this browser through localStorage.</small></li>
               </ul>
@@ -669,9 +680,9 @@
     const $$ = selector => [...document.querySelectorAll(selector)];
 
     const STORAGE = {
-      settings: 'scribbloom.settings.v6',
-      stash: 'scribbloom.stash.v6',
-      current: 'scribbloom.current.v6'
+      settings: 'scribbloom.settings.v7',
+      stash: 'scribbloom.stash.v7',
+      current: 'scribbloom.current.v7'
     };
 
     const defaultKit = {
@@ -703,20 +714,41 @@
       mission: 'Draw the same idea three times: simple, expressive, and polished. Keep the silhouette identical so you can see how details change the mood.',
       fixTips: []
     };
+    const TEXT_MODEL_FALLBACKS = [
+      'google/gemma-4-31b-it:free',
+      'google/gemma-4-26b-a4b-it:free',
+      'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      'openrouter/auto'
+    ];
+
     function normalizeSettings(raw = {}) {
       return {
         apiKey: raw.apiKey || '',
-        textModel: raw.textModel || 'google/gemma-4-31b-it:free',
+        textModel: raw.textModel || 'auto-free',
+        customTextModel: raw.customTextModel || '',
         imageProvider: ['pollinations', 'puter', 'local'].includes(raw.imageProvider) ? raw.imageProvider : 'pollinations',
         puterModel: raw.puterModel || 'flux-schnell'
       };
+    }
+
+    function getTextModelOrder(preferred = state?.settings?.textModel || 'auto-free') {
+      const custom = state?.settings?.customTextModel?.trim();
+      if (preferred === 'custom' && custom) return [custom, ...TEXT_MODEL_FALLBACKS.filter(model => model !== custom)];
+      if (!preferred || preferred === 'auto-free') return [...TEXT_MODEL_FALLBACKS];
+      return [preferred, ...TEXT_MODEL_FALLBACKS.filter(model => model !== preferred)];
+    }
+
+    function isRetryableOpenRouterError(status, bodyText = '') {
+      const lower = String(bodyText).toLowerCase();
+      return status === 429 || lower.includes('provider returned error') || lower.includes('rate') || lower.includes('quota') || lower.includes('temporarily') || lower.includes('overloaded');
     }
 
     let state = {
       kit: load(STORAGE.current, defaultKit),
       settings: normalizeSettings(load(STORAGE.settings, {
         apiKey: '',
-        textModel: 'google/gemma-4-31b-it:free',
+        textModel: 'auto-free',
+        customTextModel: '',
         imageProvider: 'pollinations',
         puterModel: 'flux-schnell'
       })),
@@ -776,7 +808,11 @@
       const provider = providerLabel(state.settings.imageProvider || 'pollinations');
       $('#apiStatus').textContent = `${connected ? 'OpenRouter text: key saved locally' : 'OpenRouter text: not connected'} · Image: ${provider}`;
       $('#apiKey').value = state.settings.apiKey || '';
-      $('#textModel').value = state.settings.textModel || 'google/gemma-4-31b-it:free';
+      $('#textModel').value = state.settings.textModel || 'auto-free';
+      const customTextModel = $('#customTextModel');
+      const customWrap = $('#customTextModelWrap');
+      if (customTextModel) customTextModel.value = state.settings.customTextModel || '';
+      if (customWrap) customWrap.style.display = state.settings.textModel === 'custom' ? 'block' : 'none';
       $('#imageProvider').value = state.settings.imageProvider || 'pollinations';
       const quickProvider = $('#quickImageProvider');
       if (quickProvider) quickProvider.value = state.settings.imageProvider || 'pollinations';
@@ -929,25 +965,45 @@ The final image should feel like a premium emblem blueprint sheet for Procreate 
 
     async function callOpenRouter(messages, options = {}) {
       if (!state.settings.apiKey) throw new Error('No OpenRouter API key saved in Settings.');
-      const body = {
-        model: options.model || state.settings.textModel || 'google/gemma-4-31b-it:free',
-        messages,
-        temperature: options.temperature ?? 0.7
-      };
-      if (options.modalities) body.modalities = options.modalities;
-      if (options.response_format) body.response_format = options.response_format;
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${state.settings.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': location.origin,
-          'X-Title': 'SCRIBBLOOM'
-        },
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
+      const modelsToTry = options.model ? [options.model] : getTextModelOrder(state.settings.textModel);
+      let lastError = '';
+
+      for (const model of modelsToTry) {
+        const body = {
+          model,
+          messages,
+          temperature: options.temperature ?? 0.7
+        };
+        if (options.modalities) body.modalities = options.modalities;
+        if (options.response_format) body.response_format = options.response_format;
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.settings.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': location.origin,
+            'X-Title': 'SCRIBBLOOM'
+          },
+          body: JSON.stringify(body)
+        });
+
+        const text = await response.text();
+        if (response.ok) {
+          try {
+            const data = JSON.parse(text);
+            data._scribbloomModelUsed = model;
+            return data;
+          } catch {
+            throw new Error(`OpenRouter returned non-JSON output from ${model}.`);
+          }
+        }
+
+        lastError = `${model}: ${text.slice(0, 360)}`;
+        if (!isRetryableOpenRouterError(response.status, text)) break;
+      }
+
+      throw new Error(`All text model attempts failed. Last error: ${lastError}`);
     }
 
     async function generateFullKit() {
@@ -983,6 +1039,7 @@ Return this JSON shape:
         ], { response_format: { type: 'json_object' } });
         const text = data.choices?.[0]?.message?.content || '{}';
         kit = { ...fallbackKit(), ...JSON.parse(text), prompt: currentInputs().idea };
+        if (data._scribbloomModelUsed) kit.shapeLanguage += `\n\nText model used: ${data._scribbloomModelUsed}`;
       } catch (error) {
         kit = fallbackKit();
         kit.shapeLanguage += `\n\nAI note: OpenRouter was not used for this kit. Reason: ${error.message.slice(0, 220)}`;
@@ -1301,6 +1358,7 @@ Negative prompt / avoid completely:
     $('#generateImage').addEventListener('click', generateAIImage);
     $('#quickImageProvider').addEventListener('change', event => setImageProvider(event.target.value));
     $('#imageProvider').addEventListener('change', event => setImageProvider(event.target.value));
+    $('#textModel').addEventListener('change', () => { state.settings = normalizeSettings({ ...state.settings, textModel: $('#textModel').value, customTextModel: $('#customTextModel')?.value?.trim() || '' }); save(STORAGE.settings, state.settings); updateStatus(); });
         $('#generatePollinations').addEventListener('click', () => { setImageProvider('pollinations'); generateAIImage(); });
     $('#generatePuter').addEventListener('click', () => { setImageProvider('puter'); generateAIImage(); });
     $('#generateSelectedProvider').addEventListener('click', () => { setImageProvider($('#quickImageProvider').value); generateAIImage(); });
@@ -1326,14 +1384,14 @@ Negative prompt / avoid completely:
       if (deleteIndex !== undefined) { state.stash.splice(Number(deleteIndex), 1); save(STORAGE.stash, state.stash); renderStash(); }
     });
     $('#saveSettings').addEventListener('click', () => {
-      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value || 'auto-free', customTextModel: $('#customTextModel')?.value?.trim() || '', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       updateStatus();
     });
-    $('#clearSettings').addEventListener('click', () => { state.settings = normalizeSettings({ apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell' }); save(STORAGE.settings, state.settings); updateStatus(); });
+    $('#clearSettings').addEventListener('click', () => { state.settings = normalizeSettings({ apiKey: '', textModel: 'auto-free', customTextModel: '', imageProvider: 'pollinations', puterModel: 'flux-schnell' }); save(STORAGE.settings, state.settings); updateStatus(); });
     $('#testKey').addEventListener('click', async () => {
       $('#apiStatus').textContent = 'Testing OpenRouter...';
-      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value || 'auto-free', customTextModel: $('#customTextModel')?.value?.trim() || '', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       try {
         const data = await callOpenRouter([{ role: 'user', content: 'Reply with exactly: SCRIBBLOOM connected' }], { temperature: 0 });
