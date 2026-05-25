@@ -583,7 +583,7 @@
         <section class="tab-panel" id="panel-settings" role="tabpanel">
           <div class="grid two">
             <div class="card grid">
-              <h3>OpenRouter setup</h3>
+              <h3>AI + image setup</h3>
               <div class="notice tiny">For a public GitHub Pages app, do not hardcode your API key. Paste it here at runtime. It can be saved locally on your own device.</div>
               <div>
                 <label for="apiKey">OpenRouter API key</label>
@@ -591,11 +591,24 @@
               </div>
               <div>
                 <label for="textModel">Text / planning model</label>
-                <input id="textModel" value="openrouter/auto" />
+                <input id="textModel" value="google/gemma-4-31b-it:free" />
               </div>
               <div>
-                <label for="imageModel">Image blueprint model</label>
-                <input id="imageModel" placeholder="Choose an OpenRouter image-capable model" />
+                <label for="imageProvider">Blueprint image provider</label>
+                <select id="imageProvider">
+                  <option value="pollinations">Pollinations — free / no key</option>
+                  <option value="puter">Puter.js — free / no key</option>
+                  <option value="openrouter">OpenRouter image model — optional / usually paid</option>
+                  <option value="local">Local SVG blueprint only</option>
+                </select>
+              </div>
+              <div>
+                <label for="puterModel">Puter image model</label>
+                <input id="puterModel" value="flux-schnell" placeholder="Example: flux-schnell" />
+              </div>
+              <div>
+                <label for="imageModel">OpenRouter image model (optional)</label>
+                <input id="imageModel" placeholder="Only needed if provider is OpenRouter" />
               </div>
               <div class="btn-row">
                 <button class="btn primary" id="saveSettings">Save settings</button>
@@ -607,7 +620,8 @@
               <h3>App notes</h3>
               <ul class="list">
                 <li><strong>Static build.</strong><small>Everything is client-side. No backend, routing, build tools, or paid hosting required.</small></li>
-                <li><strong>Image generation depends on model support.</strong><small>If your chosen image model fails, use the local SVG blueprint button or try a different OpenRouter image-capable model.</small></li>
+                <li><strong>Free image route.</strong><small>SCRIBBLOOM now uses Pollinations or Puter for blueprint image generation, with local SVG fallback if a provider fails.</small></li>
+                <li><strong>OpenRouter role.</strong><small>Best used for text planning, prompt building, lessons, and critique. OpenRouter image models are optional and often paid.</small></li>
                 <li><strong>Best workflow.</strong><small>Generate blueprint → save image → import to Procreate → lower opacity → trace on a new layer → customize.</small></li>
                 <li><strong>Privacy.</strong><small>Your saved relics and optional API key are stored only in this browser through localStorage.</small></li>
               </ul>
@@ -660,7 +674,7 @@
 
     let state = {
       kit: load(STORAGE.current, defaultKit),
-      settings: load(STORAGE.settings, { apiKey: '', textModel: 'openrouter/auto', imageModel: '' }),
+      settings: load(STORAGE.settings, { apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell', imageModel: '' }),
       stash: load(STORAGE.stash, [])
     };
 
@@ -672,7 +686,7 @@
       variations: ['Variations', 'Push the same idea into different moods without losing readability.'],
       fixer: ['Fixer', 'Diagnose messy, uneven, flat, or unreadable drawings with simple corrections.'],
       stash: ['Stash', 'Save projects locally as reusable drawing relics.'],
-      settings: ['Settings', 'Connect OpenRouter, choose models, and manage local storage.']
+      settings: ['Settings', 'Choose your AI teacher plus free blueprint image providers and local storage.']
     };
 
     function load(key, fallback) {
@@ -701,11 +715,18 @@
       setTab(btn.dataset.tab);
     });
 
+    function providerLabel(provider) {
+      return ({ pollinations: 'Pollinations', puter: 'Puter', openrouter: 'OpenRouter image', local: 'Local SVG' })[provider] || 'Pollinations';
+    }
+
     function updateStatus() {
       const connected = Boolean(state.settings.apiKey);
-      $('#apiStatus').textContent = connected ? 'OpenRouter: key saved locally' : 'OpenRouter: not connected';
+      const provider = providerLabel(state.settings.imageProvider || 'pollinations');
+      $('#apiStatus').textContent = `${connected ? 'OpenRouter text: key saved locally' : 'OpenRouter text: not connected'} · Image: ${provider}`;
       $('#apiKey').value = state.settings.apiKey || '';
-      $('#textModel').value = state.settings.textModel || 'openrouter/auto';
+      $('#textModel').value = state.settings.textModel || 'google/gemma-4-31b-it:free';
+      $('#imageProvider').value = state.settings.imageProvider || 'pollinations';
+      $('#puterModel').value = state.settings.puterModel || 'flux-schnell';
       $('#imageModel').value = state.settings.imageModel || '';
     }
 
@@ -820,7 +841,7 @@ Image style for blueprint:
     async function callOpenRouter(messages, options = {}) {
       if (!state.settings.apiKey) throw new Error('No OpenRouter API key saved in Settings.');
       const body = {
-        model: options.model || state.settings.textModel || 'openrouter/auto',
+        model: options.model || state.settings.textModel || 'google/gemma-4-31b-it:free',
         messages,
         temperature: options.temperature ?? 0.7
       };
@@ -881,27 +902,120 @@ Return this JSON shape:
       setTab('blueprint');
     }
 
-    async function generateAIImage() {
+    function buildImagePrompt() {
       const prompt = state.kit.blueprintPrompt || buildRefinedPrompt();
-      $('#blueprintLabel').textContent = 'Generating AI image...';
+      return `${prompt}
+
+Important image instructions:
+- beginner-friendly blueprint sheet
+- clean linework and construction guides
+- readable silhouette
+- clear labels and feature zones
+- not photorealistic
+- useful for tracing in Procreate`;
+    }
+
+    function buildPollinationsUrl(prompt) {
+      return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
+    }
+
+    let puterScriptPromise;
+    function loadPuterScript() {
+      if (window.puter) return Promise.resolve(window.puter);
+      if (puterScriptPromise) return puterScriptPromise;
+      puterScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.puter.com/v2/';
+        script.async = true;
+        script.onload = () => window.puter ? resolve(window.puter) : reject(new Error('Puter loaded, but window.puter is unavailable.'));
+        script.onerror = () => reject(new Error('Could not load Puter.js.'));
+        document.head.appendChild(script);
+      });
+      return puterScriptPromise;
+    }
+
+    async function generateWithPollinations(prompt) {
+      const url = buildPollinationsUrl(prompt);
+      state.kit.imageUrl = url;
+      save(STORAGE.current, state.kit);
+      renderBlueprint();
+      $('#blueprintLabel').textContent = 'Blueprint ready via Pollinations';
+    }
+
+    async function generateWithPuter(prompt) {
+      await loadPuterScript();
+      if (!window.puter?.ai?.txt2img) throw new Error('Puter image API is unavailable right now.');
+      const result = await window.puter.ai.txt2img(prompt, { model: state.settings.puterModel || 'flux-schnell' });
+      const first = Array.isArray(result) ? result[0] : result;
+      const url = first?.src || first?.url || first?.image?.src || first?.image_url || first;
+      if (!url || typeof url !== 'string') throw new Error('Puter did not return an image URL.');
+      state.kit.imageUrl = url;
+      save(STORAGE.current, state.kit);
+      renderBlueprint();
+      $('#blueprintLabel').textContent = 'Blueprint ready via Puter';
+    }
+
+    async function generateWithOpenRouterImage(prompt) {
+      if (!state.settings.imageModel) throw new Error('Add an OpenRouter image model in Settings first.');
+      const data = await callOpenRouter([
+        { role: 'user', content: prompt }
+      ], { model: state.settings.imageModel, modalities: ['image', 'text'], temperature: 0.85 });
+      const message = data.choices?.[0]?.message || {};
+      let url = message.images?.[0]?.image_url?.url;
+      if (!url && Array.isArray(message.content)) {
+        const imagePart = message.content.find(part => part.type === 'image_url' || part.image_url);
+        url = imagePart?.image_url?.url || imagePart?.url;
+      }
+      if (!url) throw new Error('The model responded, but no image URL was found.');
+      state.kit.imageUrl = url;
+      save(STORAGE.current, state.kit);
+      renderBlueprint();
+      $('#blueprintLabel').textContent = 'Blueprint ready via OpenRouter';
+    }
+
+    async function generateAIImage() {
+      const prompt = buildImagePrompt();
+      const provider = state.settings.imageProvider || 'pollinations';
+      $('#blueprintLabel').textContent = `Generating AI image with ${providerLabel(provider)}...`;
       try {
-        if (!state.settings.imageModel) throw new Error('Add an image-capable model in Settings first.');
-        const data = await callOpenRouter([
-          { role: 'user', content: prompt }
-        ], { model: state.settings.imageModel, modalities: ['image', 'text'], temperature: 0.85 });
-        const message = data.choices?.[0]?.message || {};
-        let url = message.images?.[0]?.image_url?.url;
-        if (!url && Array.isArray(message.content)) {
-          const imagePart = message.content.find(part => part.type === 'image_url' || part.image_url);
-          url = imagePart?.image_url?.url || imagePart?.url;
+        if (provider === 'pollinations') {
+          await generateWithPollinations(prompt);
+          return;
         }
-        if (!url) throw new Error('The model responded, but no image URL was found.');
-        state.kit.imageUrl = url;
-        save(STORAGE.current, state.kit);
-        renderBlueprint();
-        $('#blueprintLabel').textContent = 'AI blueprint ready';
+        if (provider === 'puter') {
+          await generateWithPuter(prompt);
+          return;
+        }
+        if (provider === 'openrouter') {
+          await generateWithOpenRouterImage(prompt);
+          return;
+        }
+        createLocalBlueprint();
+        $('#blueprintLabel').textContent = 'Local SVG blueprint ready';
       } catch (error) {
-        $('#blueprintLabel').textContent = 'AI failed; local SVG created';
+        if (provider === 'puter') {
+          try {
+            await generateWithPollinations(prompt);
+            $('#blueprintLabel').textContent = 'Puter failed; Pollinations fallback ready';
+            return;
+          } catch (fallbackError) {
+            $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
+            createLocalBlueprint(`${error.message} | ${fallbackError.message}`);
+            return;
+          }
+        }
+        if (provider === 'openrouter') {
+          try {
+            await generateWithPollinations(prompt);
+            $('#blueprintLabel').textContent = 'OpenRouter image failed; Pollinations fallback ready';
+            return;
+          } catch (fallbackError) {
+            $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
+            createLocalBlueprint(`${error.message} | ${fallbackError.message}`);
+            return;
+          }
+        }
+        $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
         createLocalBlueprint(error.message);
       }
     }
@@ -1106,14 +1220,14 @@ Return this JSON shape:
       if (deleteIndex !== undefined) { state.stash.splice(Number(deleteIndex), 1); save(STORAGE.stash, state.stash); renderStash(); }
     });
     $('#saveSettings').addEventListener('click', () => {
-      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'openrouter/auto', imageModel: $('#imageModel').value.trim() };
+      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell', imageModel: $('#imageModel').value.trim() };
       save(STORAGE.settings, state.settings);
       updateStatus();
     });
-    $('#clearSettings').addEventListener('click', () => { state.settings = { apiKey: '', textModel: 'openrouter/auto', imageModel: '' }; save(STORAGE.settings, state.settings); updateStatus(); });
+    $('#clearSettings').addEventListener('click', () => { state.settings = { apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell', imageModel: '' }; save(STORAGE.settings, state.settings); updateStatus(); });
     $('#testKey').addEventListener('click', async () => {
       $('#apiStatus').textContent = 'Testing OpenRouter...';
-      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'openrouter/auto', imageModel: $('#imageModel').value.trim() };
+      state.settings = { apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell', imageModel: $('#imageModel').value.trim() };
       save(STORAGE.settings, state.settings);
       try {
         const data = await callOpenRouter([{ role: 'user', content: 'Reply with exactly: SCRIBBLOOM connected' }], { temperature: 0 });
