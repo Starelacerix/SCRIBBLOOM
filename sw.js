@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scribbloom-v1.0.0';
+const CACHE_NAME = 'scribbloom-v3-free-image-visible';
 const ASSETS = [
   './',
   './index.html',

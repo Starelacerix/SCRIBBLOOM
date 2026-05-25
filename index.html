@@ -459,6 +459,28 @@
                 </div>
                 <div class="chips"><span class="chip" id="blueprintLabel">No blueprint yet</span></div>
               </div>
+              <div class="card grid" style="margin-bottom: 14px; background: rgba(0,0,0,.14); box-shadow: none;">
+                <div class="btn-row" style="justify-content: space-between; align-items: end;">
+                  <div>
+                    <h3 style="margin-bottom: 4px;">Free image generator</h3>
+                    <p class="tiny" style="margin:0">Choose Pollinations or Puter here. OpenRouter is still for text lessons unless you intentionally choose a paid image model.</p>
+                  </div>
+                  <div style="min-width: min(360px, 100%);">
+                    <label for="quickImageProvider">Image provider</label>
+                    <select id="quickImageProvider">
+                      <option value="pollinations">Pollinations — free / no key</option>
+                      <option value="puter">Puter.js — free / no key</option>
+                      <option value="local">Local SVG blueprint — always free</option>
+                      <option value="openrouter">OpenRouter image — optional / usually paid</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn primary" id="generatePollinations">Generate with Pollinations</button>
+                  <button class="btn purple" id="generatePuter">Generate with Puter</button>
+                  <button class="btn" id="generateSelectedProvider">Generate with selected provider</button>
+                </div>
+              </div>
               <div class="blueprint-stage show-center show-safe" id="blueprintStage">
                 <div class="guide-overlay center-guide"></div>
                 <div class="guide-overlay thirds-guide"></div>
@@ -726,6 +748,8 @@
       $('#apiKey').value = state.settings.apiKey || '';
       $('#textModel').value = state.settings.textModel || 'google/gemma-4-31b-it:free';
       $('#imageProvider').value = state.settings.imageProvider || 'pollinations';
+      const quickProvider = $('#quickImageProvider');
+      if (quickProvider) quickProvider.value = state.settings.imageProvider || 'pollinations';
       $('#puterModel').value = state.settings.puterModel || 'flux-schnell';
       $('#imageModel').value = state.settings.imageModel || '';
     }
@@ -1020,6 +1044,17 @@ Important image instructions:
       }
     }
 
+    function setImageProvider(provider) {
+      state.settings = {
+        ...state.settings,
+        imageProvider: provider || 'pollinations',
+        textModel: state.settings.textModel || 'google/gemma-4-31b-it:free',
+        puterModel: state.settings.puterModel || 'flux-schnell'
+      };
+      save(STORAGE.settings, state.settings);
+      updateStatus();
+    }
+
     function createLocalBlueprint(note = '') {
       const inputs = currentInputs();
       const title = state.kit.title || `${inputs.mood} ${inputs.subject}`;
@@ -1198,6 +1233,10 @@ Important image instructions:
     $('#copyPrompt').addEventListener('click', async () => navigator.clipboard.writeText($('#promptOutput').textContent));
     $('#sendToBlueprint').addEventListener('click', () => setTab('blueprint'));
     $('#generateImage').addEventListener('click', generateAIImage);
+    $('#quickImageProvider').addEventListener('change', event => setImageProvider(event.target.value));
+    $('#generatePollinations').addEventListener('click', () => { setImageProvider('pollinations'); generateAIImage(); });
+    $('#generatePuter').addEventListener('click', () => { setImageProvider('puter'); generateAIImage(); });
+    $('#generateSelectedProvider').addEventListener('click', () => { setImageProvider($('#quickImageProvider').value); generateAIImage(); });
     $('#fallbackBlueprint').addEventListener('click', () => createLocalBlueprint());
     $('#downloadBlueprint').addEventListener('click', () => {
       if (!state.kit.imageUrl) return createLocalBlueprint();
