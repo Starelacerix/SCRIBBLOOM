@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scribbloom-v5-hf-qwen-rebuild';
+const CACHE_NAME = 'scribbloom-v6-strict-blueprint-mode';
 const ASSETS = [
   './',
   './index.html',

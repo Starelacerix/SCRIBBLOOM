@@ -410,7 +410,7 @@
                 </div>
                 <div>
                   <label for="style">Style language</label>
-                  <select id="style"><option>Soft glossy icon</option><option>Clean blueprint</option><option>Gothic cute</option><option>Cosmic sticker</option><option>Painterly toy</option><option>Relic-tech</option><option>Dream-interface</option><option>Minimal vector</option><option>Handmade wonky</option><option>Premium app icon</option><option>Chaotic candy</option><option>Velvet neon</option></select>
+                  <select id="style"><option>Soft glossy icon</option><option selected>Clean blueprint</option><option>Gothic cute</option><option>Cosmic sticker</option><option>Painterly toy</option><option>Relic-tech</option><option>Dream-interface</option><option>Minimal vector</option><option>Handmade wonky</option><option>Premium app icon</option><option>Chaotic candy</option><option>Velvet neon</option></select>
                 </div>
                 <div>
                   <label for="mood">Mood</label>
@@ -418,11 +418,27 @@
                 </div>
                 <div>
                   <label for="blueprintMode">Blueprint mode</label>
-                  <select id="blueprintMode"><option>Trace Mode</option><option>Construction Mode</option><option>Layer Mode</option><option>Silhouette Mode</option><option>Detail Mode</option><option>Freestyle Mode</option></select>
+                  <select id="blueprintMode"><option>Trace Mode</option><option selected>Construction Mode</option><option>Layer Mode</option><option>Silhouette Mode</option><option>Detail Mode</option><option>Freestyle Mode</option></select>
                 </div>
                 <div>
                   <label for="canvasPreset">Canvas preset</label>
-                  <select id="canvasPreset"><option>1024 × 1024 PWA icon</option><option>512 × 512 app icon</option><option>2048 × 2048 sticker</option><option>3000 × 3000 logo mark</option><option>1920 × 1080 banner</option><option>2048 × 2732 iPad portrait</option></select>
+                  <select id="canvasPreset"><option selected>1024 × 1024 PWA icon</option><option>512 × 512 app icon</option><option>2048 × 2048 sticker</option><option>3000 × 3000 logo mark</option><option>1920 × 1080 banner</option><option>2048 × 2732 iPad portrait</option></select>
+                </div>
+                <div>
+                  <label for="blueprintStyle">Blueprint style preset</label>
+                  <select id="blueprintStyle"><option selected>Technical Blueprint Crest</option><option>Logo Construction Sheet</option><option>Clean Icon Sheet</option><option>Patent Sketch Sheet</option><option>Chalk Draft Crest</option></select>
+                </div>
+                <div>
+                  <label for="backgroundStyle">Blueprint background</label>
+                  <select id="backgroundStyle"><option selected>Dark blueprint blue</option><option>Pale cyan blueprint</option><option>White technical sheet</option><option>Transparent-feeling sheet</option></select>
+                </div>
+                <div>
+                  <label for="compositionType">Composition type</label>
+                  <select id="compositionType"><option selected>Centered shield crest</option><option>Centered badge</option><option>Circular emblem</option><option>Banner logo crest</option><option>Icon patent sheet</option></select>
+                </div>
+                <div>
+                  <label for="strictness">Strictness</label>
+                  <select id="strictness"><option selected>Strict blueprint</option><option>Balanced</option><option>Loose</option></select>
                 </div>
               </div>
               <div class="btn-row">
@@ -430,7 +446,7 @@
                 <button class="btn purple" id="makePrompt">Refine prompt only</button>
                 <button class="btn" id="randomIdea">Chaos idea</button>
               </div>
-              <div class="notice tiny">Each major tool opens under its own tab. The main page stays clean; generated details are routed into Blueprint, Lesson, Shape Lab, Variations, Fixer, and Stash.</div>
+              <div class="notice tiny">Each major tool opens under its own tab. Use the new strict blueprint controls to force dark-blue drafting sheets, crest composition, white technical lines, and anti-sketch prompting.</div>
             </div>
 
             <div class="card grid">
@@ -668,9 +684,9 @@
     const $$ = selector => [...document.querySelectorAll(selector)];
 
     const STORAGE = {
-      settings: 'scribbloom.settings.v3',
-      stash: 'scribbloom.stash.v3',
-      current: 'scribbloom.current.v3'
+      settings: 'scribbloom.settings.v4',
+      stash: 'scribbloom.stash.v4',
+      current: 'scribbloom.current.v4'
     };
 
     const defaultKit = {
@@ -730,7 +746,7 @@
 
     const titles = {
       forge: ['Idea Forge', 'Turn a rough drawing idea into a structured blueprint, layer plan, and practice path.'],
-      blueprint: ['Blueprint', 'Generate or build a traceable image map with guide overlays and tiny preview checks.'],
+      blueprint: ['Blueprint', 'Generate a strict technical blueprint sheet with guide overlays, style forcing, and tiny preview checks.'],
       lesson: ['Lesson', 'Follow beginner-safe Procreate steps, layers, brush suggestions, and practice missions.'],
       shape: ['Shape Lab', 'Decode why the design works through silhouette, contrast, and shape language.'],
       variations: ['Variations', 'Push the same idea into different moods without losing readability.'],
@@ -805,12 +821,21 @@
         style: $('#style').value,
         mood: $('#mood').value,
         blueprintMode: $('#blueprintMode').value,
-        canvasPreset: $('#canvasPreset').value
+        canvasPreset: $('#canvasPreset').value,
+        blueprintStyle: $('#blueprintStyle').value,
+        backgroundStyle: $('#backgroundStyle').value,
+        compositionType: $('#compositionType').value,
+        strictness: $('#strictness').value
       };
     }
 
     function buildRefinedPrompt(inputs = currentInputs()) {
       const idea = inputs.idea || `a ${inputs.mood.toLowerCase()} ${inputs.subject.toLowerCase()} in a ${inputs.style.toLowerCase()} style`;
+      const strictnessLine = inputs.strictness === 'Strict blueprint'
+        ? 'This must read as a true technical blueprint emblem sheet. Prioritize a dark blueprint background, white drafting lines, measured construction marks, and a centered crest composition.'
+        : inputs.strictness === 'Balanced'
+          ? 'Balance creative style with technical blueprint discipline. Keep the sheet structured and clearly blueprint-like.'
+          : 'Allow a looser blueprint interpretation, but keep drafting cues visible.';
       return `Create a detailed, traceable Procreate blueprint for: ${idea}.
 
 Subject type: ${inputs.subject}.
@@ -819,11 +844,19 @@ Style language: ${inputs.style}.
 Mood: ${inputs.mood}.
 Blueprint mode: ${inputs.blueprintMode}.
 Canvas preset: ${inputs.canvasPreset}.
+Blueprint style preset: ${inputs.blueprintStyle}.
+Background style: ${inputs.backgroundStyle}.
+Composition type: ${inputs.compositionType}.
+Strictness: ${inputs.strictness}.
+
+${strictnessLine}
 
 Required blueprint details:
+- centered front-facing composition
 - clean outer silhouette
 - beginner-friendly construction shapes
 - centerline and proportional anchor points
+- symmetry guides and measurement arrows
 - labeled zones for main features
 - simple shadow map
 - highlight/gloss map
@@ -833,9 +866,23 @@ Required blueprint details:
 - leave small creative freedom zones so the artist can customize
 
 Image style for blueprint:
-- clean black/indigo line art on a pale blueprint sheet or transparent-feeling background
-- clear labels, arrows, symmetry guides, and soft construction circles
-- not a finished illustration; it should be useful as a drawing map.`;
+- dark blue or technically appropriate blueprint background based on the chosen background style
+- white and pale cyan drafting lines
+- clean technical linework and controlled crosshatching
+- emblem / badge / crest presentation matching the chosen composition
+- visible dimension marks, construction circles, drafting guides, and alignment lines
+- polished instructional sheet, not a casual drawing
+
+Do NOT make:
+- beige paper
+- notebook sketch
+- grayscale concept art
+- photoreal pencil page
+- casual loose object study
+- messy unfinished sketch
+- plain isolated object without blueprint framing
+
+The result should feel like a polished icon construction blueprint that is useful for tracing in Procreate.`;
     }
 
     function fallbackKit() {
@@ -939,6 +986,8 @@ Image style for blueprint:
 User inputs:
 ${JSON.stringify(currentInputs(), null, 2)}
 
+The blueprintPrompt must strongly honor the blueprint style preset, background style, composition type, and strictness controls, and it must actively avoid beige sketchbook-style output.
+
 Return this JSON shape:
 {
   "title": "short title",
@@ -970,16 +1019,47 @@ Return this JSON shape:
     }
 
     function buildImagePrompt() {
-      const prompt = state.kit.blueprintPrompt || buildRefinedPrompt();
-      return `${prompt}
+      const inputs = currentInputs();
+      const basePrompt = state.kit.blueprintPrompt || buildRefinedPrompt(inputs);
+      const strictBlock = inputs.strictness === 'Strict blueprint'
+        ? `STRICT BLUEPRINT MODE:
+- make this a true technical blueprint sheet
+- use ${inputs.backgroundStyle.toLowerCase()}
+- render in white and pale cyan drafting lines
+- compose it as a ${inputs.compositionType.toLowerCase()}
+- emphasize ${inputs.blueprintStyle.toLowerCase()} presentation
+- include dimension arrows, measurement ticks, centerline, symmetry guides, and construction circles
+- make it look like a polished emblem construction poster` 
+        : inputs.strictness === 'Balanced'
+          ? `BALANCED BLUEPRINT MODE:
+- preserve a blueprint feel while allowing some stylistic softness
+- keep the background and drafting lines clearly blueprint-like
+- still include measurement marks and a strong centered composition`
+          : `LOOSE BLUEPRINT MODE:
+- keep blueprint cues visible but allow a more expressive sheet.`;
+      return `${basePrompt}
+
+${strictBlock}
 
 Important image instructions:
 - beginner-friendly blueprint sheet
 - clean linework and construction guides
 - readable silhouette
 - clear labels and feature zones
-- not photorealistic
-- useful for tracing in Procreate`;
+- centered composition
+- no photorealism
+- useful for tracing in Procreate
+
+Negative prompt / avoid:
+- beige paper
+- tan sketchbook page
+- grayscale notebook drawing
+- casual pencil concept art
+- isolated object study
+- messy rough sketch
+- soft photoreal shading
+- plain light paper background
+- low-detail random object sketch`;
     }
 
     function buildPollinationsUrl(prompt) {
