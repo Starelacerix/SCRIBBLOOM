@@ -476,24 +476,22 @@
                 <div class="chips"><span class="chip" id="blueprintLabel">No blueprint yet</span></div>
               </div>
               <div class="card grid" style="margin-bottom: 14px; background: rgba(0,0,0,.14); box-shadow: none;">
-                <div class="btn-row" style="justify-content: space-between; align-items: end;">
+                <div class="btn-row" style="justify-content: space-between; align-items: end; gap: 16px;">
                   <div>
                     <h3 style="margin-bottom: 4px;">Free image generator</h3>
-                    <p class="tiny" style="margin:0">Choose Hugging Face Qwen for the best blueprint quality if you have a token, or use Pollinations / Puter as lighter fallbacks. OpenRouter stays text-only here.</p>
+                    <p class="tiny" style="margin:0">SCRIBBLOOM now uses the original two free providers only. Pollinations is the default. Puter is the backup. Both use a stronger strict-blueprint prompt tuned for emblem sheets instead of loose sketchbook drawings.</p>
                   </div>
                   <div style="min-width: min(360px, 100%);">
                     <label for="quickImageProvider">Image provider</label>
                     <select id="quickImageProvider">
-                      <option value="huggingface">Hugging Face Qwen — best quality</option>
-                      <option value="pollinations">Pollinations — free / no key</option>
+                      <option value="pollinations" selected>Pollinations — free / no key</option>
                       <option value="puter">Puter.js — free / no key</option>
                       <option value="local">Local SVG blueprint — always free</option>
                     </select>
                   </div>
                 </div>
                 <div class="btn-row">
-                  <button class="btn primary" id="generateHuggingFace">Generate with Hugging Face</button>
-                  <button class="btn" id="generatePollinations">Generate with Pollinations</button>
+                  <button class="btn primary" id="generatePollinations">Generate with Pollinations</button>
                   <button class="btn purple" id="generatePuter">Generate with Puter</button>
                   <button class="btn" id="generateSelectedProvider">Generate with selected provider</button>
                 </div>
@@ -635,23 +633,10 @@
               <div>
                 <label for="imageProvider">Blueprint image provider</label>
                 <select id="imageProvider">
-                  <option value="huggingface">Hugging Face Qwen — recommended</option>
-                  <option value="pollinations">Pollinations — free / no key</option>
+                  <option value="pollinations" selected>Pollinations — free / no key</option>
                   <option value="puter">Puter.js — free / no key</option>
                   <option value="local">Local SVG blueprint only</option>
                 </select>
-              </div>
-              <div id="hfTokenWrap">
-                <label for="hfToken">Hugging Face token</label>
-                <input id="hfToken" type="password" placeholder="hf_..." autocomplete="off" />
-              </div>
-              <div id="hfProviderWrap">
-                <label for="hfProvider">Hugging Face provider</label>
-                <input id="hfProvider" value="fal-ai" placeholder="fal-ai" />
-              </div>
-              <div id="hfModelWrap">
-                <label for="hfModel">Hugging Face image model</label>
-                <input id="hfModel" value="Qwen/Qwen-Image" placeholder="Qwen/Qwen-Image" />
               </div>
               <div id="puterModelWrap">
                 <label for="puterModel">Puter image model</label>
@@ -667,8 +652,8 @@
               <h3>App notes</h3>
               <ul class="list">
                 <li><strong>Static build.</strong><small>Everything is client-side. No backend, routing, build tools, or paid hosting required.</small></li>
-                <li><strong>Image route.</strong><small>SCRIBBLOOM now uses Hugging Face Qwen/Qwen-Image as the main high-quality blueprint generator, with Pollinations and Puter as fallbacks, plus local SVG as a guaranteed backup.</small></li>
-                <li><strong>OpenRouter role.</strong><small>OpenRouter is now text-only here: planning, prompt building, lessons, and critique. Blueprint images come from Hugging Face, Pollinations, Puter, or the local SVG tool.</small></li>
+                <li><strong>Image route.</strong><small>SCRIBBLOOM now uses Pollinations as the default no-key image generator, Puter as the backup, and local SVG as a guaranteed fallback.</small></li>
+                <li><strong>OpenRouter role.</strong><small>OpenRouter is text-only here: planning, prompt building, lessons, and critique. Blueprint images come from Pollinations, Puter, or the local SVG tool.</small></li>
                 <li><strong>Best workflow.</strong><small>Generate blueprint → save image → import to Procreate → lower opacity → trace on a new layer → customize.</small></li>
                 <li><strong>Privacy.</strong><small>Your saved relics and optional API key are stored only in this browser through localStorage.</small></li>
               </ul>
@@ -684,9 +669,9 @@
     const $$ = selector => [...document.querySelectorAll(selector)];
 
     const STORAGE = {
-      settings: 'scribbloom.settings.v4',
-      stash: 'scribbloom.stash.v4',
-      current: 'scribbloom.current.v4'
+      settings: 'scribbloom.settings.v6',
+      stash: 'scribbloom.stash.v6',
+      current: 'scribbloom.current.v6'
     };
 
     const defaultKit = {
@@ -722,10 +707,7 @@
       return {
         apiKey: raw.apiKey || '',
         textModel: raw.textModel || 'google/gemma-4-31b-it:free',
-        imageProvider: raw.imageProvider || 'huggingface',
-        hfToken: raw.hfToken || '',
-        hfProvider: raw.hfProvider || 'fal-ai',
-        hfModel: raw.hfModel || 'Qwen/Qwen-Image',
+        imageProvider: ['pollinations', 'puter', 'local'].includes(raw.imageProvider) ? raw.imageProvider : 'pollinations',
         puterModel: raw.puterModel || 'flux-schnell'
       };
     }
@@ -735,10 +717,7 @@
       settings: normalizeSettings(load(STORAGE.settings, {
         apiKey: '',
         textModel: 'google/gemma-4-31b-it:free',
-        imageProvider: 'huggingface',
-        hfToken: '',
-        hfProvider: 'fal-ai',
-        hfModel: 'Qwen/Qwen-Image',
+        imageProvider: 'pollinations',
         puterModel: 'flux-schnell'
       })),
       stash: load(STORAGE.stash, [])
@@ -752,7 +731,7 @@
       variations: ['Variations', 'Push the same idea into different moods without losing readability.'],
       fixer: ['Fixer', 'Diagnose messy, uneven, flat, or unreadable drawings with simple corrections.'],
       stash: ['Stash', 'Save projects locally as reusable drawing relics.'],
-      settings: ['Settings', 'Set your OpenRouter text model, your Hugging Face image token, and your fallback blueprint providers.']
+      settings: ['Settings', 'Set your OpenRouter text model plus the free blueprint image providers and local storage behavior.']
     };
 
     function load(key, fallback) {
@@ -782,13 +761,11 @@
     });
 
     function providerLabel(provider) {
-      return ({ huggingface: 'Hugging Face Qwen', pollinations: 'Pollinations', puter: 'Puter', local: 'Local SVG' })[provider] || 'Hugging Face Qwen';
+      return ({ pollinations: 'Pollinations', puter: 'Puter', local: 'Local SVG' })[provider] || 'Pollinations';
     }
 
     function syncImageSettingsUI() {
-      const provider = state.settings.imageProvider || 'huggingface';
-      const hfIds = ['#hfTokenWrap', '#hfProviderWrap', '#hfModelWrap'];
-      hfIds.forEach(id => { const el = $(id); if (el) el.style.display = provider === 'huggingface' ? 'block' : 'none'; });
+      const provider = state.settings.imageProvider || 'pollinations';
       const puterWrap = $('#puterModelWrap');
       if (puterWrap) puterWrap.style.display = provider === 'puter' ? 'block' : 'none';
     }
@@ -796,19 +773,13 @@
     function updateStatus() {
       state.settings = normalizeSettings(state.settings);
       const connected = Boolean(state.settings.apiKey);
-      const provider = providerLabel(state.settings.imageProvider || 'huggingface');
+      const provider = providerLabel(state.settings.imageProvider || 'pollinations');
       $('#apiStatus').textContent = `${connected ? 'OpenRouter text: key saved locally' : 'OpenRouter text: not connected'} · Image: ${provider}`;
       $('#apiKey').value = state.settings.apiKey || '';
       $('#textModel').value = state.settings.textModel || 'google/gemma-4-31b-it:free';
-      $('#imageProvider').value = state.settings.imageProvider || 'huggingface';
+      $('#imageProvider').value = state.settings.imageProvider || 'pollinations';
       const quickProvider = $('#quickImageProvider');
-      if (quickProvider) quickProvider.value = state.settings.imageProvider || 'huggingface';
-      const hfToken = $('#hfToken');
-      const hfProvider = $('#hfProvider');
-      const hfModel = $('#hfModel');
-      if (hfToken) hfToken.value = state.settings.hfToken || '';
-      if (hfProvider) hfProvider.value = state.settings.hfProvider || 'fal-ai';
-      if (hfModel) hfModel.value = state.settings.hfModel || 'Qwen/Qwen-Image';
+      if (quickProvider) quickProvider.value = state.settings.imageProvider || 'pollinations';
       $('#puterModel').value = state.settings.puterModel || 'flux-schnell';
       syncImageSettingsUI();
     }
@@ -831,58 +802,62 @@
 
     function buildRefinedPrompt(inputs = currentInputs()) {
       const idea = inputs.idea || `a ${inputs.mood.toLowerCase()} ${inputs.subject.toLowerCase()} in a ${inputs.style.toLowerCase()} style`;
+      const backgroundMap = {
+        'Dark blueprint blue': 'deep navy blueprint sheet background',
+        'Pale cyan blueprint': 'pale cyan blueprint sheet background',
+        'White technical sheet': 'white technical drafting sheet background',
+        'Transparent-feeling sheet': 'clean subtle technical background with blueprint feeling'
+      };
       const strictnessLine = inputs.strictness === 'Strict blueprint'
-        ? 'This must read as a true technical blueprint emblem sheet. Prioritize a dark blueprint background, white drafting lines, measured construction marks, and a centered crest composition.'
+        ? 'Treat this as a strict technical emblem blueprint. It must look like a polished blueprint poster, not a casual sketch or object study.'
         : inputs.strictness === 'Balanced'
-          ? 'Balance creative style with technical blueprint discipline. Keep the sheet structured and clearly blueprint-like.'
-          : 'Allow a looser blueprint interpretation, but keep drafting cues visible.';
-      return `Create a detailed, traceable Procreate blueprint for: ${idea}.
+          ? 'Keep a strong blueprint identity while allowing some stylistic warmth.'
+          : 'Allow a looser blueprint interpretation, but keep drafting cues obvious.';
+      return `Create a highly readable technical blueprint illustration sheet for the following subject: ${idea}.
 
-Subject type: ${inputs.subject}.
-Skill level: ${inputs.level}.
-Style language: ${inputs.style}.
-Mood: ${inputs.mood}.
-Blueprint mode: ${inputs.blueprintMode}.
-Canvas preset: ${inputs.canvasPreset}.
-Blueprint style preset: ${inputs.blueprintStyle}.
-Background style: ${inputs.backgroundStyle}.
-Composition type: ${inputs.compositionType}.
-Strictness: ${inputs.strictness}.
+Creative direction:
+- subject type: ${inputs.subject}
+- skill level target: ${inputs.level}
+- style language: ${inputs.style}
+- mood: ${inputs.mood}
+- blueprint mode: ${inputs.blueprintMode}
+- blueprint style preset: ${inputs.blueprintStyle}
+- composition type: ${inputs.compositionType}
+- background: ${backgroundMap[inputs.backgroundStyle] || inputs.backgroundStyle}
+- canvas target: ${inputs.canvasPreset}
+- strictness: ${inputs.strictness}
 
 ${strictnessLine}
 
-Required blueprint details:
-- centered front-facing composition
-- clean outer silhouette
-- beginner-friendly construction shapes
-- centerline and proportional anchor points
-- symmetry guides and measurement arrows
-- labeled zones for main features
-- simple shadow map
-- highlight/gloss map
-- optional texture zones
-- Procreate layer order
-- tiny-icon readability notes
-- leave small creative freedom zones so the artist can customize
+Must include:
+- centered front-facing emblem composition
+- a clear outer silhouette first
+- shield / badge / crest style framing when appropriate
+- centerline and symmetry guides
+- construction circles, proportional anchors, and alignment lines
+- measurement arrows, ticks, and dimension marks around the form
+- labeled feature zones and drafting callouts
+- a ribbon or title area when composition suggests it
+- blueprint-grid atmosphere and controlled crosshatching
+- a clean instructional-sheet layout useful for tracing in Procreate
 
-Image style for blueprint:
-- dark blue or technically appropriate blueprint background based on the chosen background style
-- white and pale cyan drafting lines
-- clean technical linework and controlled crosshatching
-- emblem / badge / crest presentation matching the chosen composition
-- visible dimension marks, construction circles, drafting guides, and alignment lines
-- polished instructional sheet, not a casual drawing
+Visual rendering rules:
+- use crisp white and pale cyan drafting lines
+- keep the whole composition bold, graphic, and icon-readable
+- emphasize silhouette clarity over tiny clutter
+- make the blueprint look intentional, premium, and polished
+- preserve one strong focal feature so the design reads instantly
 
-Do NOT make:
+Avoid completely:
 - beige paper
-- notebook sketch
-- grayscale concept art
-- photoreal pencil page
-- casual loose object study
-- messy unfinished sketch
-- plain isolated object without blueprint framing
+- notebook page aesthetics
+- grayscale object-study sketching
+- casual pencil concept art
+- photoreal shading
+- unfinished messy linework
+- a plain isolated object floating without blueprint framing
 
-The result should feel like a polished icon construction blueprint that is useful for tracing in Procreate.`;
+The final image should feel like a premium emblem blueprint sheet for Procreate practice.`;
     }
 
     function fallbackKit() {
@@ -1021,115 +996,67 @@ Return this JSON shape:
     function buildImagePrompt() {
       const inputs = currentInputs();
       const basePrompt = state.kit.blueprintPrompt || buildRefinedPrompt(inputs);
+      const provider = state.settings.imageProvider || 'pollinations';
       const strictBlock = inputs.strictness === 'Strict blueprint'
         ? `STRICT BLUEPRINT MODE:
-- make this a true technical blueprint sheet
+- this must be a true technical blueprint crest sheet
 - use ${inputs.backgroundStyle.toLowerCase()}
-- render in white and pale cyan drafting lines
-- compose it as a ${inputs.compositionType.toLowerCase()}
-- emphasize ${inputs.blueprintStyle.toLowerCase()} presentation
-- include dimension arrows, measurement ticks, centerline, symmetry guides, and construction circles
-- make it look like a polished emblem construction poster` 
+- render with white and pale cyan drafting lines
+- use a ${inputs.compositionType.toLowerCase()}
+- emphasize ${inputs.blueprintStyle.toLowerCase()} styling
+- include construction circles, centerline, symmetry guides, dimension arrows, tick marks, and drafting annotations
+- ensure a strong emblem / badge / crest presentation
+- make it look like a polished blueprint poster, not a sketchbook page`
         : inputs.strictness === 'Balanced'
           ? `BALANCED BLUEPRINT MODE:
-- preserve a blueprint feel while allowing some stylistic softness
-- keep the background and drafting lines clearly blueprint-like
-- still include measurement marks and a strong centered composition`
+- preserve a blueprint identity but allow some stylistic softness
+- keep visible grid, technical lines, and measured construction marks`
           : `LOOSE BLUEPRINT MODE:
 - keep blueprint cues visible but allow a more expressive sheet.`;
+      const providerBlock = provider === 'pollinations'
+        ? `POLLINATIONS TUNING:
+- favor one coherent centered composition
+- avoid drifting into random sketchbook imagery
+- keep the sheet graphic and poster-like
+- make the blueprint feel complete in a single image`
+        : provider === 'puter'
+          ? `PUTER TUNING:
+- keep shapes bold and simplified
+- prioritize clean line hierarchy and strong contrast
+- avoid noisy rendering and stray sketch marks`
+          : `LOCAL SVG TUNING:
+- remain schematic and clearly structured.`;
       return `${basePrompt}
 
 ${strictBlock}
 
-Important image instructions:
-- beginner-friendly blueprint sheet
-- clean linework and construction guides
-- readable silhouette
-- clear labels and feature zones
-- centered composition
-- no photorealism
+${providerBlock}
+
+Hard visual requirements:
+- dark blueprint-style or technical drafting background matching the chosen background setting
+- blueprint grid visible behind the drawing
+- all main drawing lines in white or pale cyan
+- centered composition with balanced margins
+- a polished icon-construction-sheet feeling
+- readable at app-icon size
 - useful for tracing in Procreate
 
-Negative prompt / avoid:
+Negative prompt / avoid completely:
 - beige paper
-- tan sketchbook page
+- tan page
+- brown sketchbook look
 - grayscale notebook drawing
-- casual pencil concept art
-- isolated object study
-- messy rough sketch
-- soft photoreal shading
-- plain light paper background
-- low-detail random object sketch`;
+- loose pencil object study
+- isolated object on plain paper
+- messy scribbles
+- faint low-contrast linework
+- photoreal shading
+- generic random technical sketch`;
     }
 
     function buildPollinationsUrl(prompt) {
       return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
     }
-
-    function blobToDataUrl(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    function setBlueprintImage(url, label) {
-      state.kit.imageUrl = url;
-      save(STORAGE.current, state.kit);
-      renderBlueprint();
-      $('#blueprintLabel').textContent = label;
-    }
-
-    async function loadHuggingFaceClient() {
-      const mod = await import('https://esm.sh/@huggingface/inference');
-      return mod.InferenceClient;
-    }
-
-    let puterScriptPromise;
-    function loadPuterScript() {
-      if (window.puter) return Promise.resolve(window.puter);
-      if (puterScriptPromise) return puterScriptPromise;
-      puterScriptPromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://js.puter.com/v2/';
-        script.async = true;
-        script.onload = () => window.puter ? resolve(window.puter) : reject(new Error('Puter loaded, but window.puter is unavailable.'));
-        script.onerror = () => reject(new Error('Could not load Puter.js.'));
-        document.head.appendChild(script);
-      });
-      return puterScriptPromise;
-    }
-
-    async function generateWithHuggingFace(prompt) {
-      if (!state.settings.hfToken) throw new Error('Add your Hugging Face token in Settings first.');
-      const InferenceClient = await loadHuggingFaceClient();
-      const client = new InferenceClient(state.settings.hfToken);
-      const result = await client.textToImage({
-        provider: state.settings.hfProvider || 'fal-ai',
-        model: state.settings.hfModel || 'Qwen/Qwen-Image',
-        inputs: prompt,
-        parameters: {
-          width: 1024,
-          height: 1024,
-          num_inference_steps: 28,
-          guidance_scale: 4
-        }
-      });
-      let dataUrl = '';
-      if (result instanceof Blob) {
-        dataUrl = await blobToDataUrl(result);
-      } else if (result?.blob instanceof Blob) {
-        dataUrl = await blobToDataUrl(result.blob);
-      } else if (typeof result === 'string') {
-        dataUrl = result;
-      } else {
-        throw new Error('Hugging Face did not return an image blob.');
-      }
-      setBlueprintImage(dataUrl, 'Blueprint ready via Hugging Face');
-    }
-
     async function generateWithPollinations(prompt) {
       const url = buildPollinationsUrl(prompt);
       setBlueprintImage(url, 'Blueprint ready via Pollinations');
@@ -1147,13 +1074,9 @@ Negative prompt / avoid:
 
     async function generateAIImage() {
       const prompt = buildImagePrompt();
-      const provider = state.settings.imageProvider || 'huggingface';
+      const provider = state.settings.imageProvider || 'pollinations';
       $('#blueprintLabel').textContent = `Generating AI image with ${providerLabel(provider)}...`;
       try {
-        if (provider === 'huggingface') {
-          await generateWithHuggingFace(prompt);
-          return;
-        }
         if (provider === 'pollinations') {
           await generateWithPollinations(prompt);
           return;
@@ -1165,30 +1088,13 @@ Negative prompt / avoid:
         createLocalBlueprint();
         $('#blueprintLabel').textContent = 'Local SVG blueprint ready';
       } catch (error) {
-        if (provider === 'huggingface') {
-          try {
-            await generateWithPollinations(prompt);
-            $('#blueprintLabel').textContent = 'Hugging Face failed; Pollinations fallback ready';
-            return;
-          } catch (fallbackError) {
-            try {
-              await generateWithPuter(prompt);
-              $('#blueprintLabel').textContent = 'HF + Pollinations failed; Puter fallback ready';
-              return;
-            } catch (fallbackError2) {
-              $('#blueprintLabel').textContent = 'Image providers failed; local SVG created';
-              createLocalBlueprint(`${error.message} | ${fallbackError.message} | ${fallbackError2.message}`);
-              return;
-            }
-          }
-        }
         if (provider === 'puter') {
           try {
             await generateWithPollinations(prompt);
             $('#blueprintLabel').textContent = 'Puter failed; Pollinations fallback ready';
             return;
           } catch (fallbackError) {
-            $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
+            $('#blueprintLabel').textContent = 'Image providers failed; local SVG created';
             createLocalBlueprint(`${error.message} | ${fallbackError.message}`);
             return;
           }
@@ -1199,18 +1105,18 @@ Negative prompt / avoid:
             $('#blueprintLabel').textContent = 'Pollinations failed; Puter fallback ready';
             return;
           } catch (fallbackError) {
-            $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
+            $('#blueprintLabel').textContent = 'Image providers failed; local SVG created';
             createLocalBlueprint(`${error.message} | ${fallbackError.message}`);
             return;
           }
         }
-        $('#blueprintLabel').textContent = 'Image provider failed; local SVG created';
+        $('#blueprintLabel').textContent = 'Image providers failed; local SVG created';
         createLocalBlueprint(error.message);
       }
     }
 
     function setImageProvider(provider) {
-      state.settings = normalizeSettings({ ...state.settings, imageProvider: provider || 'huggingface' });
+      state.settings = normalizeSettings({ ...state.settings, imageProvider: provider || 'pollinations' });
       save(STORAGE.settings, state.settings);
       updateStatus();
     }
@@ -1395,8 +1301,7 @@ Negative prompt / avoid:
     $('#generateImage').addEventListener('click', generateAIImage);
     $('#quickImageProvider').addEventListener('change', event => setImageProvider(event.target.value));
     $('#imageProvider').addEventListener('change', event => setImageProvider(event.target.value));
-    $('#generateHuggingFace').addEventListener('click', () => { setImageProvider('huggingface'); generateAIImage(); });
-    $('#generatePollinations').addEventListener('click', () => { setImageProvider('pollinations'); generateAIImage(); });
+        $('#generatePollinations').addEventListener('click', () => { setImageProvider('pollinations'); generateAIImage(); });
     $('#generatePuter').addEventListener('click', () => { setImageProvider('puter'); generateAIImage(); });
     $('#generateSelectedProvider').addEventListener('click', () => { setImageProvider($('#quickImageProvider').value); generateAIImage(); });
     $('#fallbackBlueprint').addEventListener('click', () => createLocalBlueprint());
@@ -1421,14 +1326,14 @@ Negative prompt / avoid:
       if (deleteIndex !== undefined) { state.stash.splice(Number(deleteIndex), 1); save(STORAGE.stash, state.stash); renderStash(); }
     });
     $('#saveSettings').addEventListener('click', () => {
-      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, hfToken: $('#hfToken').value.trim(), hfProvider: $('#hfProvider').value.trim() || 'fal-ai', hfModel: $('#hfModel').value.trim() || 'Qwen/Qwen-Image', puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       updateStatus();
     });
-    $('#clearSettings').addEventListener('click', () => { state.settings = normalizeSettings({ apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'huggingface', hfToken: '', hfProvider: 'fal-ai', hfModel: 'Qwen/Qwen-Image', puterModel: 'flux-schnell' }); save(STORAGE.settings, state.settings); updateStatus(); });
+    $('#clearSettings').addEventListener('click', () => { state.settings = normalizeSettings({ apiKey: '', textModel: 'google/gemma-4-31b-it:free', imageProvider: 'pollinations', puterModel: 'flux-schnell' }); save(STORAGE.settings, state.settings); updateStatus(); });
     $('#testKey').addEventListener('click', async () => {
       $('#apiStatus').textContent = 'Testing OpenRouter...';
-      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, hfToken: $('#hfToken').value.trim(), hfProvider: $('#hfProvider').value.trim() || 'fal-ai', hfModel: $('#hfModel').value.trim() || 'Qwen/Qwen-Image', puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
+      state.settings = normalizeSettings({ apiKey: $('#apiKey').value.trim(), textModel: $('#textModel').value.trim() || 'google/gemma-4-31b-it:free', imageProvider: $('#imageProvider').value, puterModel: $('#puterModel').value.trim() || 'flux-schnell' });
       save(STORAGE.settings, state.settings);
       try {
         const data = await callOpenRouter([{ role: 'user', content: 'Reply with exactly: SCRIBBLOOM connected' }], { temperature: 0 });

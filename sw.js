@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scribbloom-v6-strict-blueprint-mode';
+const CACHE_NAME = 'scribbloom-v8-free-only-better-prompts';
 const ASSETS = [
   './',
   './index.html',
